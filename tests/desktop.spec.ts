@@ -57,7 +57,7 @@ test('desktop indexes, mixes, classifies and broadcasts audible live audio to a 
   await writeFile(path.join(sfx, 'Test Spell.wav'), tone(1, 660));
   const port = 31000 + (process.pid % 1000);
   await writeFile(path.join(userData, 'settings.json'), JSON.stringify({ ...defaults, libraryRoot: library, port, udpMin: 46000, udpMax: 46100 }));
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, RPG_USER_DATA: userData, ELECTRON_RUN_AS_NODE: '' } });
+  let app = await electron.launch({ args: ['.'], env: { ...process.env, RPG_USER_DATA: userData, ELECTRON_RUN_AS_NODE: '' } });
   const errors: string[] = [];
   app.process().stderr?.on('data', data => { if (process.env.RPG_TEST_DEBUG) console.log(String(data)); });
   try {
@@ -143,7 +143,8 @@ test('desktop indexes, mixes, classifies and broadcasts audible live audio to a 
     await gm.getByLabel('Era', { exact: true }).fill('steampunk');
     await gm.getByRole('button', { name: 'Save & mark reviewed' }).click();
     await gm.getByRole('button', { name: 'Re-index' }).click();
-    await expect(gm.locator('.track-info')).toContainText('steampunk');
+    await expect(gm.locator('.track')).toHaveCount(1);
+    await expect(gm.locator('.track-info').first()).toContainText('steampunk');
     await gm.screenshot({ path: 'test-results/desktop.png' });
     await player.screenshot({ path: 'test-results/player.png' });
     await gm.getByRole('button', { name: 'Stop broadcast', exact: true }).click();
@@ -152,5 +153,35 @@ test('desktop indexes, mixes, classifies and broadcasts audible live audio to a 
     await expect(player.locator('#status')).toContainText('Live · connected', { timeout: 30_000 });
     await expect.poll(() => energy(player)).toBeGreaterThan(0.0001);
     expect(errors).toEqual([]);
+    await app.close();
+    app = await electron.launch({ args: ['.'], env: { ...process.env, RPG_USER_DATA: userData, ELECTRON_RUN_AS_NODE: '' } });
+    const reopened = await app.firstWindow();
+    await expect(reopened.locator('.track')).toHaveCount(3);
+    await reopened.getByRole('searchbox').fill('Spell');
+    await expect(reopened.locator('.track')).toHaveCount(1);
+    await expect(reopened.locator('.track-info').first()).toContainText('steampunk');
   } finally { await app.close(); await rm(directory, { recursive: true, force: true }); }
+});
+
+test('indexes and plays the existing Ogg library without modifying source files', async () => {
+  const root = process.env.RPG_TEST_LIBRARY;
+  test.skip(!root, 'Set RPG_TEST_LIBRARY to opt into a real-library smoke test.');
+  const userData = await mkdtemp(path.join(os.tmpdir(), 'rpg-real-library-'));
+  await writeFile(path.join(userData, 'settings.json'), JSON.stringify({ ...defaults, libraryRoot: root, port: 32000 + process.pid % 1000 }));
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, RPG_USER_DATA: userData, ELECTRON_RUN_AS_NODE: '' } });
+  try {
+    const gm = await app.firstWindow();
+    await gm.getByRole('slider', { name: 'GM master volume' }).fill('0');
+    await gm.getByRole('button', { name: 'Index audio library', exact: true }).click();
+    await expect(gm.locator('.scan-status')).toContainText(/Indexed [\d,]+ audio files/, { timeout: 45000 });
+    console.log('Real library:', await gm.evaluate(() => window.rpg.facets().then(({ total, review }) => ({ total, review }))));
+    await gm.getByRole('searchbox').fill('Into the Feywilds');
+    await gm.getByRole('button', { name: /Add Into the Feywilds/ }).first().click();
+    await expect(gm.locator('.channel.playing')).toHaveCount(1);
+    await gm.getByRole('searchbox').fill('Campfire in Woods');
+    await gm.getByRole('button', { name: /Add Campfire in Woods/ }).first().click();
+    await expect(gm.locator('.channel.playing')).toHaveCount(2);
+    await expect(gm.locator('.channel .error')).toHaveCount(0);
+    await gm.screenshot({ path: 'test-results/real-library.png' });
+  } finally { await app.close(); await rm(userData, { recursive: true, force: true }); }
 });

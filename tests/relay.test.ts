@@ -5,14 +5,14 @@ import { AudioRelay } from '../src/main/relay';
 import type { Settings } from '../src/shared/types';
 
 export const testSettings: Settings = { libraryRoot: '', port: 0, udpMin: 44000, udpMax: 44100, publicAddress: '', stunUrl: '', turnUrl: '', turnUsername: '', turnCredential: '' };
-const peer = () => new RTCPeerConnection({ iceServers: [], iceUseIpv6: false, iceInterfaceAddresses: { udp4: '127.0.0.1' }, iceAdditionalHostAddresses: ['127.0.0.1'], codecs: { audio: [useOPUS({ parameters: 'stereo=1;sprop-stereo=1' })] } });
+const peer = (local = false) => new RTCPeerConnection({ iceServers: [], iceUseIpv6: false, ...(local ? { iceInterfaceAddresses: { udp4: '127.0.0.1' }, iceAdditionalHostAddresses: ['127.0.0.1'] } : {}), codecs: { audio: [useOPUS({ parameters: 'stereo=1;sprop-stereo=1' })] } });
 async function until(check: () => boolean, timeout = 10000) {
   const deadline = Date.now() + timeout;
   while (!check()) { if (Date.now() > deadline) throw new Error('Timed out waiting for WebRTC'); await new Promise(r => setTimeout(r, 20)); }
 }
 test('relays live Opus to eight listeners, supports late joins, and releases sessions', { timeout: 90000 }, async () => {
   const relay = new AudioRelay(testSettings);
-  const publisher = peer();
+  const publisher = peer(true);
   const listeners: RTCPeerConnection[] = [];
   let timer: NodeJS.Timeout | undefined;
   try {

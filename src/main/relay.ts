@@ -29,7 +29,7 @@ export class AudioRelay {
       bundlePolicy: 'max-bundle', iceUseTcp: false,
       ...(local ? { iceInterfaceAddresses: { udp4: '127.0.0.1' }, iceAdditionalHostAddresses: ['127.0.0.1'] }
         : { icePortRange: [this.settings.udpMin, this.settings.udpMax] as [number, number],
-          iceAdditionalHostAddresses: this.settings.publicAddress ? [this.settings.publicAddress] : ['127.0.0.1'] }),
+          iceAdditionalHostAddresses: this.settings.publicAddress ? [this.settings.publicAddress] : [] }),
     });
   }
   async publish(offer: RTCSessionDescriptionInit) {

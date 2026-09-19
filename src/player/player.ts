@@ -1,4 +1,4 @@
-import { gatherIce, preferOpus } from '../shared/rtc';
+import { gatherIce, preferOpus, stereoOffer } from '../shared/rtc';
 const toggle = document.querySelector<HTMLButtonElement>('#toggle')!;
 const volume = document.querySelector<HTMLInputElement>('#volume')!;
 const status = document.querySelector<HTMLElement>('#status')!;
@@ -6,6 +6,11 @@ const level = document.querySelector<HTMLElement>('#level')!;
 let context: AudioContext | undefined;
 let gain: GainNode | undefined;
 let source: MediaStreamAudioSourceNode | undefined;
+// Chromium requires a playing media element to drive remote WebRTC decoding.
+// It stays muted; Web Audio provides the actual output and per-player gain.
+const receiver = new Audio();
+receiver.muted = true;
+receiver.autoplay = true;
 let peer: RTCPeerConnection | undefined;
 let sessionId: string | undefined;
 let playing = false;
@@ -29,6 +34,7 @@ async function disconnect() {
   const previous = peer; peer = undefined;
   if (previous) { previous.onconnectionstatechange = null; previous.close(); }
   source?.disconnect(); source = undefined;
+  receiver.pause(); receiver.srcObject = null;
   if (id) await fetch(`/api/listeners/${id}`, { method: 'DELETE', keepalive: true }).catch(() => {});
 }
 function reconnect(message: string) {
@@ -49,7 +55,10 @@ async function connect() {
     preferOpus(next.addTransceiver('audio', { direction: 'recvonly' }));
     next.ontrack = event => {
       source?.disconnect();
-      source = context!.createMediaStreamSource(new MediaStream([event.track]));
+      const stream = new MediaStream([event.track]);
+      receiver.srcObject = stream;
+      void receiver.play().catch(() => { status.textContent = 'Press play again to enable audio in this browser.'; });
+      source = context!.createMediaStreamSource(stream);
       source.connect(gain!);
     };
     next.onconnectionstatechange = () => {
@@ -57,7 +66,7 @@ async function connect() {
       if (next.connectionState === 'connected') status.textContent = playing ? 'Live · connected to your GM' : 'Paused · connected to live audio';
       if (['failed', 'disconnected', 'closed'].includes(next.connectionState)) reconnect('Connection interrupted. Reconnecting…');
     };
-    await next.setLocalDescription(await next.createOffer());
+    await next.setLocalDescription(stereoOffer(await next.createOffer()));
     await gatherIce(next);
     const response = await fetch('/api/listen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next.localDescription), signal: AbortSignal.timeout(20_000) });
     const result = await response.json();
@@ -82,6 +91,7 @@ toggle.addEventListener('click', async () => {
     context ??= new AudioContext();
     if (!gain) { gain = context.createGain(); gain.gain.value = 0; gain.connect(context.destination); }
     await context.resume();
+    if (receiver.srcObject && receiver.paused) await receiver.play();
     playing = !playing; started = true;
     toggle.textContent = playing ? 'Ⅱ Pause' : '▶ Listen live';
     updateVolume();

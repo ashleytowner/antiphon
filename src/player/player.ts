@@ -35,7 +35,7 @@ async function disconnect() {
   if (previous) { previous.onconnectionstatechange = null; previous.close(); }
   source?.disconnect(); source = undefined;
   receiver.pause(); receiver.srcObject = null;
-  if (id) await fetch(`/api/listeners/${id}`, { method: 'DELETE', keepalive: true }).catch(() => {});
+  if (id) await fetch(`/api/listeners/${id}`, { method: 'DELETE', keepalive: true, signal: AbortSignal.timeout(3000) }).catch(() => {});
 }
 function reconnect(message: string) {
   status.textContent = message;
@@ -49,6 +49,7 @@ async function connect() {
   try {
     await disconnect();
     const available = await fetch('/api/status', { signal: AbortSignal.timeout(8000) }).then(r => r.json());
+    if (!started || current !== generation) return;
     if (!available.broadcasting) throw new Error('Waiting for the GM to start broadcasting…');
     status.textContent = 'Connecting to live audio…';
     const next = new RTCPeerConnection({ iceServers: [] }); peer = next;

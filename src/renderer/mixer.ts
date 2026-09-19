@@ -102,6 +102,7 @@ export class Mixer {
     const generation = ++this.generation;
     try {
       await this.ready();
+      if (generation !== this.generation) return;
       this.broadcastState = 'Connecting…'; this.emit();
       this.peer?.close();
       const peer = new RTCPeerConnection({ iceServers: [] }); this.peer = peer;
@@ -112,6 +113,11 @@ export class Mixer {
         if (peer.connectionState === 'connected') { this.broadcastState = 'Live'; this.emit(); }
         else if (['failed', 'disconnected'].includes(peer.connectionState)) this.scheduleReconnect();
       };
+      setTimeout(() => {
+        if (this.peer === peer && peer.connectionState !== 'connected') {
+          this.broadcastState = 'Audio connection timed out. Retrying…'; this.emit(); this.scheduleReconnect();
+        }
+      }, 15_000);
       await peer.setLocalDescription(stereoOffer(await peer.createOffer()));
       await gatherIce(peer);
       if (generation !== this.generation) return;

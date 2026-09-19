@@ -64,7 +64,7 @@ test('desktop indexes, mixes, classifies and broadcasts audible live audio to a 
     const gm = await app.firstWindow();
     gm.on('pageerror', error => errors.push(error.message));
     gm.on('console', message => { if (process.env.RPG_TEST_DEBUG) console.log('GM:', message.text()); });
-    await expect(gm.getByRole('heading', { name: 'RPG Music Player' })).toBeVisible();
+    await expect(gm.getByRole('heading', { name: 'Antiphon' })).toBeVisible();
     await instrument(gm);
     await gm.getByRole('slider', { name: 'GM master volume' }).fill('0');
     await gm.getByRole('button', { name: 'Index audio library', exact: true }).click();

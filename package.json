@@ -1,5 +1,5 @@
 {
-  "name": "rpg-music-player",
+  "name": "antiphon",
   "version": "0.1.0",
   "description": "A local tabletop audio library, mixer, and live broadcast",
   "author": "Chaotic Wizard <contact@chaoticwizard.com> (https://chaoticwizard.com/)",
@@ -32,8 +32,8 @@
     "typescript": "^5.9.0"
   },
   "build": {
-    "appId": "local.rpg.musicplayer",
-    "productName": "RPG Music Player",
+    "appId": "local.antiphon",
+    "productName": "Antiphon",
     "directories": {
       "output": "release"
     },

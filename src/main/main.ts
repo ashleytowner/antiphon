@@ -43,7 +43,7 @@ app.whenReady().then(async () => {
   });
   const window = new BrowserWindow({
     width: 1400, height: 950, minWidth: 1000, minHeight: 650,
-    backgroundColor: '#11151e', title: 'RPG Music Player',
+    backgroundColor: '#11151e', title: 'Antiphon',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false }
   });
   window.setMenuBarVisibility(false);
@@ -102,7 +102,7 @@ app.whenReady().then(async () => {
   });
   window.webContents.on('render-process-gone', () => { void server?.relay.stopPublisher(); });
   await window.loadFile(path.join(__dirname, '../renderer/index.html'));
-}).catch(error => { dialog.showErrorBox('Unable to start RPG Music Player', String(error)); app.quit(); });
+}).catch(error => { dialog.showErrorBox('Unable to start Antiphon', String(error)); app.quit(); });
 app.on('before-quit', event => {
   if (quitting) return;
   event.preventDefault(); quitting = true;

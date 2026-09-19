@@ -1,4 +1,4 @@
-# RPG Music Player
+# Antiphon
 
 A local-first Electron application for tabletop music, ambience, and sound effects. The GM indexes audio files once, mixes several tracks live, and broadcasts that exact mix to players through a minimal listening page.
 

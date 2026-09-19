@@ -11,7 +11,8 @@
     "start": "npm run build && electron .",
     "test": "tsx --test tests/*.test.ts",
     "package": "npm run build && electron-builder",
-    "check": "npm run build && npm test"
+    "check": "npm run build && npm test",
+    "test:desktop": "npm run build && playwright test"
   },
   "dependencies": {
     "react": "^19.2.0",
@@ -19,6 +20,7 @@
     "werift": "^0.24.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -52,5 +54,10 @@
       "target": "dmg",
       "category": "public.app-category.music"
     }
+  },
+  "allowScripts": {
+    "electron@44.4.3": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.28.2": true
   }
 }

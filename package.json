@@ -1,0 +1,40 @@
+{
+  "name": "rpg-music-player",
+  "version": "0.1.0",
+  "description": "A local tabletop audio library, mixer, and live broadcast",
+  "author": "RPG Music Player contributors",
+  "license": "MIT",
+  "private": true,
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "tsc --noEmit && node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "test": "tsx --test tests/*.test.ts",
+    "package": "npm run build && electron-builder",
+    "check": "npm run build && npm test"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "werift": "^0.22.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "electron": "^40.0.0",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.27.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.0"
+  },
+  "build": {
+    "appId": "local.rpg.musicplayer",
+    "productName": "RPG Music Player",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "package.json"],
+    "linux": { "target": ["AppImage", "deb"], "category": "AudioVideo" },
+    "win": { "target": "nsis" },
+    "mac": { "target": "dmg", "category": "public.app-category.music" }
+  }
+}

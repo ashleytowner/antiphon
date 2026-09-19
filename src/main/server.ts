@@ -8,7 +8,8 @@ import type { Settings, ServerStatus } from '../shared/types';
 export function validateOffer(value: unknown): { type: 'offer'; sdp: string } {
   const offer = value as { type?: unknown; sdp?: unknown } | null;
   if (offer?.type !== 'offer' || typeof offer.sdp !== 'string' || offer.sdp.length > 64_000 || !offer.sdp.startsWith('v=0')) throw new Error('Invalid audio offer.');
-  if (!offer.sdp.includes('m=audio ') || offer.sdp.includes('m=video ') || offer.sdp.includes('m=application ')) throw new Error('Only audio is supported.');
+  const media = offer.sdp.match(/^m=.+$/gm) ?? [];
+  if (media.length !== 1 || !media[0].startsWith('m=audio ')) throw new Error('Only audio is supported (one mixed audio stream).');
   return { type: 'offer', sdp: offer.sdp };
 }
 async function jsonBody(request: IncomingMessage) {

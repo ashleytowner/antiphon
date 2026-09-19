@@ -5,3 +5,6 @@ await mkdir('dist/player', { recursive: true });
 await build({ entryPoints: ['src/main/main.ts', 'src/main/preload.ts', 'src/main/scan-worker.ts'], outdir: 'dist/main', bundle: true, platform: 'node', format: 'cjs', external: ['electron', 'werift'], sourcemap: true });
 await build({ entryPoints: ['src/renderer/app.tsx'], outdir: 'dist/renderer', bundle: true, platform: 'browser', sourcemap: true });
 await copyFile('src/renderer/index.html', 'dist/renderer/index.html');
+await build({ entryPoints: ['src/player/player.ts'], outdir: 'dist/player', bundle: true, platform: 'browser', sourcemap: true });
+await copyFile('src/player/index.html', 'dist/player/index.html');
+await copyFile('src/player/player.css', 'dist/player/player.css');

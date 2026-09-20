@@ -126,10 +126,17 @@ function App() {
   const refresh = async () => {
     const [settings, facets, status, discord] = await Promise.all([api.settings(), api.facets(), api.serverStatus(), api.discordStatus()]);
     setSettings(settings); setFacets(facets); setServer(status); setDiscord(discord); setRevision(v => v + 1);
-    if (discord.configured && discord.enabled) setDiscordChannels(await api.discordChannels());
+    return discord;
+  };
+  const refreshDiscord = async (knownStatus?: DiscordStatus) => {
+    const status = knownStatus ?? await api.discordStatus();
+    setDiscord(status);
+    if (!status.configured || !status.enabled) { setDiscordChannels([]); return; }
+    try { setDiscordChannels(await api.discordChannels()); }
+    catch (error) { setDiscordChannels([]); setDiscord({ ...status, error: describe(error) }); }
   };
   useEffect(() => {
-    void refresh().catch(error => setError(describe(error)));
+    void refresh().then(status => refreshDiscord(status)).catch(error => setError(describe(error)));
     const unsubscribe = api.onScan(value => {
       setProgress(value);
       if (value.phase === 'done' || value.phase === 'error') { setScanning(false); void refresh().catch(error => setError(describe(error))); }
@@ -152,7 +159,7 @@ function App() {
     {error && <div className="banner error" role="alert">{error}<button className="quiet" onClick={() => setError('')}>Dismiss</button></div>}
     <div className="workspace"><aside className="broadcast-panel" aria-label="Broadcast controls">
       <section className="broadcast"><div className="section-heading"><h3>Player broadcast</h3><span className={`small ${server.broadcasting ? 'live-text' : 'muted'}`}>{server.listeners} listening</span></div><button className={mixer.playerBroadcast ? 'danger' : 'primary'} disabled={!server.running} onClick={() => { void (mixer.playerBroadcast ? mixer.stopBroadcast() : mixer.startBroadcast()).catch(error => setError(describe(error))); }}>{mixer.playerBroadcast ? 'Stop broadcast' : 'Start broadcast'}</button><p className="small muted" role="status">{server.error ?? broadcastState}</p>{server.urls.map(url => <div className="listen-url" key={url}><code>{url}</code><button className="quiet small" onClick={() => { void api.copyText(url).catch(error => setError(describe(error))); }}>Copy</button></div>)}<p className="small muted">Share the public address with remote players. Keep this app open during your session.</p></section>
-      <DiscordBroadcast status={discord} channels={discordChannels} refresh={async () => { const [status, channels] = await Promise.all([api.discordStatus(), api.discordChannels()]); setDiscord(status); setDiscordChannels(channels); }} report={error => setError(describe(error))} />
+      <DiscordBroadcast status={discord} channels={discordChannels} refresh={refreshDiscord} report={error => setError(describe(error))} />
     </aside><section className="library-panel">
       <div className="section-heading"><div><p className="eyebrow">YOUR COLLECTION</p><h2>Audio library <span className="count">{facets.total.toLocaleString()}</span></h2></div><button disabled={scanning || !settings?.libraryRoot} onClick={() => void scan()}>{scanning ? 'Indexing…' : '↻ Re-index'}</button></div>
       {progress && <div className={`scan-status ${progress.phase === 'error' ? 'error' : ''}`} role="status">{scanning && <progress />}<span>{progress.message}</span>{scanning && <strong>{progress.count.toLocaleString()} files</strong>}</div>}
@@ -171,7 +178,7 @@ function App() {
       <div className="channels">{channels.map(channel => <ChannelCard key={channel.id} channel={channel} />)}{!channels.length && <div className="empty compact"><span>≋</span><h3>Set the scene</h3><p>Play a track from the library.<br />Layer music, ambience, and SFX here.</p></div>}</div>
     </aside></div>
     {edit && <ClassificationEditor track={edit} facets={facets} close={() => setEdit(undefined)} saved={() => { setEdit(undefined); void refresh().catch(error => setError(describe(error))); }} />}
-    {settingsOpen && settings && <SettingsEditor initial={settings} discord={discord} close={() => setSettingsOpen(false)} saved={async () => { setSettingsOpen(false); setQuery({}); await refresh(); }} />}
+    {settingsOpen && settings && <SettingsEditor initial={settings} discord={discord} close={() => setSettingsOpen(false)} saved={async () => { setSettingsOpen(false); setQuery({}); const status = await refresh(); await refreshDiscord(status); }} />}
   </>;
 }
 createRoot(document.getElementById('root')!).render(<App />);

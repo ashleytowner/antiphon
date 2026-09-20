@@ -1,7 +1,7 @@
 {
   "name": "antiphon",
   "desktopName": "antiphon.desktop",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A local tabletop audio library, mixer, and live broadcast",
   "author": "Chaotic Wizard <contact@chaoticwizard.com> (https://chaoticwizard.com/)",
   "homepage": "https://chaoticwizard.com/",
@@ -13,10 +13,10 @@
     "build": "tsc --noEmit && node scripts/build.mjs",
     "start": "npm run build && electron .",
     "test": "tsx --test tests/*.test.ts",
-    "package": "npm run build && electron-builder",
-    "package:win": "npm run build && electron-builder --win nsis --x64",
-    "package:mac": "npm run build && electron-builder --mac dmg --universal",
-    "package:linux": "npm run build && electron-builder --linux",
+    "package": "npm run build && electron-builder --publish never",
+    "package:win": "npm run build && electron-builder --win nsis --x64 --publish never",
+    "package:mac": "npm run build && electron-builder --mac dmg --universal --publish never",
+    "package:linux": "npm run build && electron-builder --linux --publish never",
     "check": "npm run build && npm test",
     "test:desktop": "npm run build && playwright test"
   },
@@ -66,7 +66,8 @@
     "mac": {
       "icon": "resources/icon.icns",
       "target": "dmg",
-      "category": "public.app-category.music"
+      "category": "public.app-category.music",
+      "x64ArchFiles": "**/node_modules/@snazzah/davey-darwin-*/**/*.node"
     }
   },
   "allowScripts": {

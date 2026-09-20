@@ -61,3 +61,7 @@ npm run package
 ```
 
 `npm test` covers indexing, classification, local audio streaming, single-port signaling, and an eight-listener WebRTC relay test. `npm run test:desktop` launches Electron and verifies indexing, mixing, classification edits, restart persistence, stereo separation, live player audio, pause behavior, and reconnects. The optional `RPG_TEST_LIBRARY` smoke test indexes a real Ogg collection without changing its files. `npm run package` creates installers for the current OS.
+
+## Releases
+
+Publishing a GitHub Release runs the release workflow and attaches an unsigned Windows x64 installer, universal macOS disk image, and Linux x64 DEB, AppImage, and RPM packages. The unsigned Windows and macOS downloads may show operating-system security warnings.

@@ -14,6 +14,9 @@
     "start": "npm run build && electron .",
     "test": "tsx --test tests/*.test.ts",
     "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win nsis --x64",
+    "package:mac": "npm run build && electron-builder --mac dmg --universal",
+    "package:linux": "npm run build && electron-builder --linux",
     "check": "npm run build && npm test",
     "test:desktop": "npm run build && playwright test"
   },
@@ -41,6 +44,7 @@
     "directories": {
       "output": "release"
     },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "dist/**/*",
       "package.json"
@@ -48,9 +52,10 @@
     "linux": {
       "syncDesktopName": true,
       "icon": "resources/icon.png",
-      "target": [
-        "AppImage",
-        "deb"
+        "target": [
+          "AppImage",
+          "deb",
+          "rpm"
       ],
       "category": "AudioVideo"
     },

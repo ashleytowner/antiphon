@@ -28,6 +28,9 @@ interface MediaNodes {
   gain: GainNode;
 }
 type PlaybackState = MediaNodes & { playing: boolean; error?: string };
+type OutputAudioContext = AudioContext & {
+  setSinkId(deviceId: string): Promise<void>;
+};
 const MEDIA_ERROR =
   "Unable to decode or read this file. Check that it exists and is a supported audio format.";
 
@@ -46,6 +49,7 @@ export class Mixer {
   private generation = 0;
   private connectionAttempt?: Promise<void>;
   master = 1.0;
+  outputDeviceId = "";
   wantsBroadcast = false;
   playerBroadcast = false;
   private discordBroadcast = false;
@@ -87,8 +91,33 @@ export class Mixer {
       silence.gain.value = 0;
       this.keepalive.connect(silence).connect(this.bus);
       this.keepalive.start();
+      if (this.outputDeviceId) {
+        try {
+          await this.applyOutputDevice(this.outputDeviceId);
+        } catch {
+          // A saved device may have been disconnected since it was selected.
+          this.outputDeviceId = "";
+        }
+      }
     }
     await this.context.resume();
+  }
+  private async applyOutputDevice(deviceId: string) {
+    const context = this.context as OutputAudioContext;
+    if (typeof context.setSinkId !== "function")
+      throw new Error(
+        "Choosing an audio output device is not supported on this system.",
+      );
+    await context.setSinkId(deviceId);
+  }
+  restoreOutputDevice(deviceId: string) {
+    this.outputDeviceId = deviceId;
+  }
+  async setOutputDevice(deviceId: string) {
+    await this.ready();
+    await this.applyOutputDevice(deviceId);
+    this.outputDeviceId = deviceId;
+    this.emit();
   }
   private createMedia(
     track: Track,

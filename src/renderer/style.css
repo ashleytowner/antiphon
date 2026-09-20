@@ -52,6 +52,19 @@ header {
   font-size: 12px;
   margin-top: 6px;
 }
+.audio-output {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.audio-output select {
+  width: 190px;
+  min-width: 0;
+  color: var(--ink);
+}
 .status-pill {
   border: 1px solid var(--ink);
   border-radius: var(--radius-sm);
@@ -629,6 +642,9 @@ details summary {
   }
   .header-actions {
     flex-wrap: wrap;
+  }
+  .audio-output select {
+    width: min(190px, 50vw);
   }
   .workspace {
     display: flex;

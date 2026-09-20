@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type {
   DiscordStatus,
@@ -46,6 +46,86 @@ function PreviewIcon({ playing }: { playing: boolean }) {
         strokeLinecap="round"
       />
     </svg>
+  );
+}
+
+function AudioOutputPicker({ report }: { report: (error: unknown) => void }) {
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selected, setSelected] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const enumerate = async (restore: boolean) => {
+      try {
+        const outputs = (
+          await navigator.mediaDevices.enumerateDevices()
+        ).filter(
+          (device) =>
+            device.kind === "audiooutput" && device.deviceId !== "default",
+        );
+        if (!active) return;
+        setDevices(outputs);
+        if (restore) {
+          const saved = localStorage.getItem("gm-output-device") ?? "";
+          if (saved && outputs.some((device) => device.deviceId === saved)) {
+            mixer.restoreOutputDevice(saved);
+            setSelected(saved);
+          } else if (saved) {
+            localStorage.removeItem("gm-output-device");
+          }
+        } else if (
+          mixer.outputDeviceId &&
+          !outputs.some((device) => device.deviceId === mixer.outputDeviceId)
+        ) {
+          mixer.restoreOutputDevice("");
+          setSelected("");
+          localStorage.removeItem("gm-output-device");
+          void mixer.setOutputDevice("").catch(report);
+        }
+      } catch (error) {
+        if (active) report(error);
+      }
+    };
+    void enumerate(true);
+    const changed = () => void enumerate(false);
+    navigator.mediaDevices.addEventListener("devicechange", changed);
+    return () => {
+      active = false;
+      navigator.mediaDevices.removeEventListener("devicechange", changed);
+    };
+  }, [report]);
+
+  return (
+    <label className="audio-output">
+      <span>Audio output</span>
+      <select
+        aria-label="Audio output device"
+        value={selected}
+        disabled={busy}
+        onChange={async (event) => {
+          const deviceId = event.target.value;
+          setBusy(true);
+          try {
+            await mixer.setOutputDevice(deviceId);
+            setSelected(deviceId);
+            if (deviceId) localStorage.setItem("gm-output-device", deviceId);
+            else localStorage.removeItem("gm-output-device");
+          } catch (error) {
+            report(error);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <option value="">System default</option>
+        {devices.map((device, index) => (
+          <option key={device.deviceId} value={device.deviceId}>
+            {device.label || `Audio output ${index + 1}`}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -1134,7 +1214,7 @@ function App() {
       setError(describe(error));
     }
   };
-  const report = (error: unknown) => setError(describe(error));
+  const report = useCallback((error: unknown) => setError(describe(error)), []);
   const confirmMissingRemoval = async () => {
     if (!missingRemoval || removingMissing) return;
     setRemovingMissing(true);
@@ -1181,6 +1261,7 @@ function App() {
           </div>
         </div>
         <div className="header-actions">
+          <AudioOutputPicker report={report} />
           <span className={`status-pill ${server.broadcasting ? "live" : ""}`}>
             {server.broadcasting
               ? `● Live · ${server.listeners} listener${server.listeners === 1 ? "" : "s"}`

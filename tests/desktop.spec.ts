@@ -128,6 +128,12 @@ test("desktop indexes, mixes, classifies and broadcasts audible live audio to a 
       if (process.env.RPG_TEST_DEBUG) console.log("GM:", message.text());
     });
     await expect(gm.getByRole("heading", { name: "Antiphon" })).toBeVisible();
+    await expect(
+      gm.getByRole("combobox", { name: "Audio output device" }),
+    ).toHaveValue("");
+    await expect(
+      gm.getByRole("option", { name: "System default" }),
+    ).toBeAttached();
     const panePositions = await gm
       .locator(".broadcast-panel, .library-panel, .mixer-panel")
       .evaluateAll((panes) =>

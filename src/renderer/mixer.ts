@@ -22,6 +22,14 @@ export interface Preview {
   playing: boolean;
   error?: string;
 }
+interface MediaNodes {
+  audio: HTMLAudioElement;
+  source: MediaElementAudioSourceNode;
+  gain: GainNode;
+}
+type PlaybackState = MediaNodes & { playing: boolean; error?: string };
+const MEDIA_ERROR = 'Unable to decode or read this file. Check that it exists and is a supported audio format.';
+
 export class Mixer {
   private context?: AudioContext;
   private bus?: DynamicsCompressorNode;
@@ -31,6 +39,7 @@ export class Mixer {
   private channels = new Map<string, Channel>();
   preview?: Preview;
   private callbacks = new Set<() => void>();
+  private mediaCleanup = new WeakMap<HTMLAudioElement, () => void>();
   private peer?: RTCPeerConnection;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private generation = 0;
@@ -62,20 +71,52 @@ export class Mixer {
     }
     await this.context.resume();
   }
-  async add(track: Track) {
-    await this.ready();
+  private createMedia(track: Track, volume: number, destination: AudioNode): MediaNodes {
     const audio = new Audio();
-    audio.crossOrigin = 'anonymous'; audio.preload = 'metadata';
+    audio.crossOrigin = 'anonymous';
+    audio.preload = 'metadata';
     audio.src = `rpg-audio://track/${track.id}`;
     const source = this.context!.createMediaElementSource(audio);
     const gain = this.context!.createGain();
-    gain.gain.value = 0.7;
-    source.connect(gain).connect(this.bus!);
+    gain.gain.value = volume;
+    source.connect(gain).connect(destination);
+    return { audio, source, gain };
+  }
+  private watchMedia(state: PlaybackState, isCurrent: () => boolean = () => true) {
+    const update = () => {
+      if (!isCurrent()) return;
+      state.playing = !state.audio.paused && !state.audio.ended;
+      this.emit();
+    };
+    const fail = () => {
+      if (!isCurrent()) return;
+      state.error = MEDIA_ERROR;
+      state.playing = false;
+      this.emit();
+    };
+    state.audio.addEventListener('playing', update);
+    state.audio.addEventListener('pause', update);
+    state.audio.addEventListener('ended', update);
+    state.audio.addEventListener('error', fail);
+    this.mediaCleanup.set(state.audio, () => {
+      state.audio.removeEventListener('playing', update);
+      state.audio.removeEventListener('pause', update);
+      state.audio.removeEventListener('ended', update);
+      state.audio.removeEventListener('error', fail);
+    });
+  }
+  private disposeMedia({ audio, source, gain }: MediaNodes) {
+    this.mediaCleanup.get(audio)?.();
+    this.mediaCleanup.delete(audio);
+    audio.pause(); source.disconnect(); gain.disconnect();
+    audio.removeAttribute('src'); audio.load();
+  }
+  async add(track: Track) {
+    await this.ready();
+    const { audio, source, gain } = this.createMedia(track, 0.7, this.bus!);
     const channel: Channel = { id: crypto.randomUUID(), track, audio, source, gain, volume: 0.7, loop: track.type !== 'SFX', playing: false };
     audio.loop = channel.loop;
-    const update = () => { channel.playing = !audio.paused && !audio.ended; this.emit(); };
-    audio.addEventListener('playing', update); audio.addEventListener('pause', update); audio.addEventListener('ended', update);
-    audio.addEventListener('error', () => { channel.error = 'Unable to decode or read this file. Check that it exists and is a supported audio format.'; channel.playing = false; this.emit(); });
+    this.watchMedia(channel, () => this.channels.has(channel.id));
     this.channels.set(channel.id, channel); this.emit();
     try { await audio.play(); }
     catch (error) { if (this.channels.has(channel.id)) { channel.error = String(error); this.emit(); } }
@@ -87,21 +128,11 @@ export class Mixer {
     }
     this.stopPreview();
     await this.ready();
-    const audio = new Audio();
-    audio.crossOrigin = 'anonymous'; audio.preload = 'metadata'; audio.src = `rpg-audio://track/${track.id}`;
-    const source = this.context!.createMediaElementSource(audio);
-    const gain = this.context!.createGain(); gain.gain.value = 1;
     // Preview reaches the GM monitor only; it must not enter the broadcast bus.
-    source.connect(gain).connect(this.monitor!);
+    const { audio, source, gain } = this.createMedia(track, 1, this.monitor!);
     const preview: Preview = { id: crypto.randomUUID(), track, audio, source, gain, playing: false };
     this.preview = preview;
-    const update = () => { if (this.preview !== preview) return; preview.playing = !audio.paused && !audio.ended; this.emit(); };
-    audio.addEventListener('playing', update); audio.addEventListener('pause', update); audio.addEventListener('ended', update);
-    audio.addEventListener('error', () => {
-      if (this.preview !== preview) return;
-      preview.error = 'Unable to decode or read this file. Check that it exists and is a supported audio format.';
-      preview.playing = false; this.emit();
-    });
+    this.watchMedia(preview, () => this.preview === preview);
     this.emit();
     try { await audio.play(); }
     catch (error) { if (this.preview === preview) { preview.error = String(error); this.emit(); } }
@@ -109,8 +140,7 @@ export class Mixer {
   stopPreview() {
     const preview = this.preview; if (!preview) return;
     this.preview = undefined;
-    preview.audio.pause(); preview.source.disconnect(); preview.gain.disconnect();
-    preview.audio.removeAttribute('src'); preview.audio.load(); this.emit();
+    this.disposeMedia(preview); this.emit();
   }
   async toggle(id: string) {
     const channel = this.channels.get(id); if (!channel) return;
@@ -136,8 +166,7 @@ export class Mixer {
   }
   remove(id: string) {
     const channel = this.channels.get(id); if (!channel) return;
-    this.channels.delete(id); channel.audio.pause(); channel.source.disconnect(); channel.gain.disconnect();
-    channel.audio.removeAttribute('src'); channel.audio.load(); this.emit();
+    this.channels.delete(id); this.disposeMedia(channel); this.emit();
   }
   clear() { this.stopPreview(); for (const id of this.channels.keys()) this.remove(id); }
   async startBroadcast() {

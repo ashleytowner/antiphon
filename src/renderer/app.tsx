@@ -55,7 +55,7 @@ function SettingsEditor({ initial, discord, close, saved }: { initial: Settings;
       finally { setBusy(false); }
     }}>
       <label>Audio library folder<div className="inline"><input autoFocus required value={value.libraryRoot} onChange={e => set('libraryRoot', e.target.value)} /><button type="button" onClick={async () => { try { const folder = await api.chooseLibrary(); if (folder) set('libraryRoot', folder); } catch (error) { setError(describe(error)); } }}>Browse…</button></div></label>
-      <p className="muted small">Choose the folder containing Albums and MGS Audio. Files are played in place.</p>
+      <p className="muted small">Choose the folder containing your audio collection. Files are played in place.</p>
       <div className="settings-grid">{(['port', 'udpMin', 'udpMax'] as const).map((key, i) => <label key={key}>{['Webpage TCP port', 'First UDP media port', 'Last UDP media port'][i]}<input type="number" required min="1024" max="65535" value={value[key]} onChange={e => set(key, Number(e.target.value))} /></label>)}</div>
       <label>Public IPv4 address<input placeholder="e.g. 203.0.113.10 (optional on LAN)" value={value.publicAddress} onChange={e => set('publicAddress', e.target.value.trim())} /></label>
       <p className="notice">For remote players, forward the TCP port and the UDP range to this computer, preserving port numbers. Enter your public IPv4 address above. Saving restarts the server; start broadcasting again afterward.</p>

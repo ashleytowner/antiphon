@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { classify, titleMatches } from './classify';
+import { classify, structuredClassification, titleMatches } from './classify';
 import type { Classification, Facets, LibraryQuery, LibraryResult, ScanProgress, Track } from '../shared/types';
 
 const extensions = new Set(['.ogg', '.oga', '.opus', '.mp3', '.wav', '.flac', '.m4a', '.aac', '.webm', '.mp4', '.aif', '.aiff']);
@@ -82,9 +82,11 @@ export class Library {
     try {
       this.db.prepare('UPDATE tracks SET missing=1 WHERE root=?').run(root);
       for (const file of files) {
-        const category = classify(file.relativePath, matches);
-        const parts = file.relativePath.split(path.sep);
-        upsert.run(root, file.relativePath, path.parse(file.relativePath).name, parts[0] === 'Albums' ? parts[1] : 'MGS Audio', category.type, category.era, category.genre, Number(category.needsReview), category.reason, file.size, file.mtime);
+        const structured = structuredClassification(file.relativePath);
+        const category = structured ?? classify(file.relativePath, matches);
+        const parts = file.relativePath.split(/[\\/]/);
+        const album = structured ? parts[0] : parts[1] ?? parts[0] ?? '';
+        upsert.run(root, file.relativePath, path.parse(file.relativePath).name, album, category.type, category.era, category.genre, Number(category.needsReview), category.reason, file.size, file.mtime);
       }
       this.db.exec('COMMIT');
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }

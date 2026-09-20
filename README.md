@@ -6,7 +6,7 @@ A local-first Electron application for tabletop music, ambience, and sound effec
 
 - Thick client: audio files, SQLite index, and mixing stay on the GM computer.
 - Indexes every audio file under a chosen library folder and supports re-indexing.
-- Assigns exactly one Type, Era, and Genre to each track. Structured `MGS Audio/<type>/<era>/<genre>` folders are read directly; album tracks receive an inferred category marked for review.
+- Assigns exactly one Type, Era, and Genre to each track. Structured `<collection>/<music|ambience|sfx>/<era>/<genre>` folders are read directly; other tracks receive an inferred category marked for review.
 - Searchable library with type/era/genre filters, review queue, missing-file tracking, and per-track classification editing.
 - Click-to-play multitrack mixer: independent play/pause, per-track volume, loop/stop toggle, GM-only listening volume, and one-shot SFX defaults.
 - Serves a minimal player page with play/pause, personal volume, connection status, live-position listening, pause-as-mute, and automatic reconnect.
@@ -22,7 +22,7 @@ npm install
 npm start
 ```
 
-On first launch, choose the folder containing `Albums` and `MGS Audio`, then select Index audio library. Files play in place and are never modified.
+On first launch, choose the folder containing your audio collection, then select Index audio library. Files play in place and are never modified.
 
 ## Player connections
 

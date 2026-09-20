@@ -7,7 +7,9 @@ import { classify, titleMatches } from '../src/main/classify';
 import { Library } from '../src/main/library';
 
 test('classifies structured folders and the agreed album defaults', () => {
-  assert.deepEqual(classify('MGS Audio/sfx/scifi/Weapons/Blaster.ogg'), { type: 'SFX', era: 'scifi', genre: 'Weapons', needsReview: false, reason: 'MGS folder structure' });
+  assert.deepEqual(classify('Audio Collection/sfx/scifi/Weapons/Blaster.ogg'), { type: 'SFX', era: 'scifi', genre: 'Weapons', needsReview: false, reason: 'Structured folder hierarchy' });
+  assert.equal(classify('Any Provider/AMBIENCE/generic/Nature/Rain.ogg').type, 'Ambience');
+  assert.equal(classify('Any Provider/effects/scifi/Weapons/Blaster.ogg').needsReview, true);
   assert.equal(classify('Albums/RPG Ambiences Vol. 1/Blizzard.ogg').era, 'generic');
   assert.equal(classify('Albums/RPG Ambiences Vol. 1/Elven Forest.ogg').era, 'fantasy');
   assert.equal(classify('Albums/Sci​-​Fi Ambiences Vol. 1/Station.ogg').era, 'scifi');
@@ -15,10 +17,10 @@ test('classifies structured folders and the agreed album defaults', () => {
   assert.equal(classify('Albums/Combat Music Collection Vol. 1/Unknown.ogg').genre, 'Combat');
 });
 
-test('uses title evidence but rejects ambiguous MGS matches', () => {
-  const files = ['MGS Audio/music/fantasy/Exploration/Into the Feywilds (Loop).ogg'];
+test('uses title evidence but rejects ambiguous structured matches', () => {
+  const files = ['Audio Collection/music/fantasy/Exploration/Into the Feywilds (Loop).ogg'];
   assert.equal(classify('Albums/Biomes/Into the Feywilds.ogg', titleMatches(files)).genre, 'Exploration');
-  files.push('MGS Audio/music/scifi/Mystery/Into the Feywilds.ogg');
+  files.push('Another Collection/music/scifi/Mystery/Into the Feywilds.ogg');
   assert.equal(titleMatches(files).size, 0);
 });
 

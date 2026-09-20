@@ -1,7 +1,7 @@
 {
   "name": "antiphon",
   "desktopName": "antiphon.desktop",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "A local tabletop audio library, mixer, and live broadcast",
   "author": "Chaotic Wizard <contact@chaoticwizard.com> (https://chaoticwizard.com/)",
   "homepage": "https://chaoticwizard.com/",
@@ -67,7 +67,7 @@
       "icon": "resources/icon.icns",
       "target": "dmg",
       "category": "public.app-category.music",
-      "x64ArchFiles": "**/node_modules/@snazzah/davey-darwin-x64/**/*.node"
+      "x64ArchFiles": "**/node_modules/@snazzah/davey-darwin-*/**/*.node"
     },
     "asarUnpack": [
       "node_modules/@snazzah/davey-darwin-arm64/**/*.node",

@@ -49,5 +49,6 @@ export interface DesktopAPI {
   broadcast(offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit>;
   stopBroadcast(): Promise<void>;
   serverStatus(): Promise<ServerStatus>;
+  copyText(text: string): Promise<void>;
   onScan(callback: (progress: ScanProgress) => void): () => void;
 }

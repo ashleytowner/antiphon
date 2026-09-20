@@ -11,6 +11,7 @@ const api: DesktopAPI = {
   broadcast: offer => ipcRenderer.invoke('broadcast:start', offer),
   stopBroadcast: () => ipcRenderer.invoke('broadcast:stop'),
   serverStatus: () => ipcRenderer.invoke('server:status'),
+  copyText: text => ipcRenderer.invoke('clipboard:write', text),
   onScan: callback => {
     const listener = (_event: Electron.IpcRendererEvent, value: ScanProgress) => callback(value);
     ipcRenderer.on('library:progress', listener);

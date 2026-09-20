@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, protocol, powerSaveBlocker } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, protocol, powerSaveBlocker } from 'electron';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { Worker } from 'node:worker_threads';
@@ -88,6 +88,10 @@ app.whenReady().then(async () => {
     worker.on('exit', () => { worker = undefined; if (!completed) notify({ phase: 'error', count: 0, message: 'Indexer stopped unexpectedly. Please re-index.' }); });
   });
   handle('server:status', () => server?.status() ?? { running: false, broadcasting: false, listeners: 0, urls: [], error: serverError });
+  handle('clipboard:write', (text: unknown) => {
+    if (typeof text !== 'string' || text.length > 10_000) throw new Error('Invalid clipboard text.');
+    clipboard.writeText(text);
+  });
   handle('broadcast:start', async offer => {
     if (!server || saving) throw new Error(serverError ?? 'Server is not ready.');
     if (broadcasting) throw new Error('Broadcast connection is already being prepared.');

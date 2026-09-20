@@ -77,6 +77,9 @@ test('desktop indexes, mixes, classifies and broadcasts audible live audio to a 
     await expect(gm.locator('.channel .error')).toHaveCount(0);
     await gm.getByRole('button', { name: 'Start broadcast', exact: true }).click();
     await expect(gm.locator('.status-pill')).toContainText('Live');
+    const firstListenUrl = await gm.locator('.listen-url code').first().textContent();
+    await gm.getByRole('button', { name: 'Copy', exact: true }).first().click();
+    await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe(firstListenUrl);
     expect(await gm.evaluate(() => (window as any).__peers.at(-1).remoteDescription.sdp)).toContain('stereo=1');
     // Use another Electron BrowserWindow as a real Chromium HTTP player.
     const playerPromise = app.waitForEvent('window');

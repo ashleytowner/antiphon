@@ -1,67 +1,113 @@
 # Antiphon
 
-A local-first Electron application for tabletop music, ambience, and sound effects. The GM indexes audio files once, mixes several tracks live, and broadcasts that exact mix to players through a minimal listening page.
+**Your tabletop soundscape, from your local audio collection.**
 
-## What it does
+Antiphon is a desktop app for game masters who want to build and share live music, ambience, and sound effects without handing their collection to a third party. Your audio files, library, and live mix stay on your computer. There is no subscription and no Antiphon account to create.
 
-- Thick client: audio files, SQLite index, and mixing stay on the GM computer.
-- Indexes every audio file under a chosen library folder and supports re-indexing.
-- Assigns exactly one Type, Era, and Genre to each track. Structured `<collection>/<music|ambience|sfx>/<era>/<genre>` folders are read directly; other tracks receive an inferred category marked for review.
-- Searchable library with type/era/genre filters, review queue, missing-file tracking, and per-track classification editing.
-- Click-to-play multitrack mixer: independent play/pause, per-track volume, loop/stop toggle, GM-only listening volume, and one-shot SFX defaults.
-- Serves a minimal player page with play/pause, personal volume, connection status, live-position listening, pause-as-mute, and automatic reconnect.
-- Low-latency WebRTC broadcast using stereo Opus. GM relative volumes are shared; every listener has an independent master volume.
-- Optional Discord bot output that sends the same live mix to one selected voice channel at a time.
+![Antiphon desktop app: audio library, player broadcast controls, and live mixer](docs/images/desktop.png)
 
-## Run it
+## Bring your sessions to life
 
-Requires Node.js 24 and npm.
+Layer an exploration theme beneath forest ambience. Add a sudden door slam. Turn down the music when the party starts talking. Antiphon lets you run the whole soundscape live, then share the same mix with your players.
+
+- **Mix your scene live.** Play several tracks at once, set each track's volume, loop background audio, and use one-shot sound effects when the moment calls for them.
+- **Share with browser listeners.** Start a broadcast and give players a simple listening link. Each player controls only their own listening volume.
+- **Broadcast to Discord.** Connect a Discord bot and send the same live mix to a voice or stage channel.
+- **Keep it yours.** Audio files are played where they already live. Antiphon does not upload or alter them, and its library index stays on your computer.
+- **Find the right sound quickly.** Search and filter your collection by music, ambience, or SFX, as well as era and genre.
+- **Use the computer you have.** Antiphon is available for Linux, macOS, and Windows.
+
+## See it in action
+
+### Your GM workspace
+
+Browse your collection, build a live mixer, and start a player or Discord broadcast from one place.
+
+![Antiphon desktop workspace](docs/images/desktop.png)
+
+### The player listening page
+
+Players get a focused page with a personal volume control, play/pause, connection status, and automatic reconnection.
+
+![Player listening page](docs/images/player.png)
+
+## How it works
+
+1. **Choose your audio folder.** Antiphon plays files in place, so there is nothing to import or upload.
+2. **Index your library.** It scans your collection and helps sort tracks into useful categories.
+3. **Set the scene.** Add tracks to the mixer, adjust their levels and loops, then begin broadcasting.
+
+Your own listening volume is separate from the mix your players receive, and every browser listener can choose their own master volume.
+
+## Organise your audio library
+
+Antiphon can work with an existing collection, and it will suggest categories for files that are not already neatly organised. For the most accurate automatic categorisation, use this folder layout:
+
+```text
+My Audio Library/
+  music/
+    fantasy/
+      Exploration/
+        Into the Feywilds.ogg
+  ambience/
+    scifi/
+      Space Station/
+        Engine Hum.ogg
+  sfx/
+    modern/
+      Weapons/
+        Door Slam.ogg
+```
+
+In other words:
+
+```text
+<your library>/<music|ambience|sfx>/<era>/<genre>/<audio file>
+```
+
+Antiphon uses that structure to categorise each track by **type**, **era**, and **genre**. If a file is elsewhere, it makes a best-effort suggestion and puts uncertain results in a review list; you can change any category yourself. It also notices files that have gone missing since the last scan.
+
+## Share your mix
+
+### Browser players
+
+Start **Player broadcast** in Antiphon and share one of the listening links it provides. Players open it in a browser and hear the current live mix.
+
+Players on the same local network can use the local link directly. To share with people over the internet, you will need to port-forward Antiphon's webpage port and audio UDP port range from your router to the GM computer, then enter your public IPv4 address in Settings. Keep Antiphon open while the session is running.
+
+<details>
+<summary>Advanced connection details</summary>
+
+By default, Antiphon uses TCP port `3000` for the listening page and signaling, plus UDP ports `40000`–`40031` for audio. Some networks that block UDP may require optional STUN or TURN settings.
+
+</details>
+
+### Discord voice channels
+
+Antiphon can also deliver the same mix to one Discord voice or stage channel at a time. Create a Discord bot, invite it to your server with **View Channel**, **Connect**, and **Speak** permissions, then save its bot token in Antiphon's Settings. Choose a channel in the Discord broadcast panel to go live.
+
+The bot token is protected using your operating system's credential storage and is not shown again after saving. Discord and browser broadcasts can run at the same time.
+
+## Local-first by design
+
+Antiphon is a local desktop application, not a subscription service. Your collection stays yours:
+
+- Your audio files are read and played from your computer; they are never modified or uploaded by Antiphon.
+- Your library index and mixer run locally on the GM computer.
+- Browser player broadcasts are served directly from the GM computer, with no Antiphon-hosted server in between.
+- Discord broadcasting is optional; when used, the configured bot connects to Discord to join the selected channel.
+
+## Install or build
+
+Releases include installers for Windows, macOS, and Linux. If you are running Antiphon from source, install Node.js 24 and npm, then run:
 
 ```sh
 npm install
 npm start
 ```
 
-On first launch, choose the folder containing your audio collection, then select Index audio library. Files play in place and are never modified.
+For packaging and test commands, see the scripts in [`package.json`](package.json).
 
-## Player connections
+---
 
-Default settings:
-
-- Webpage/signaling TCP port: `3000`
-- WebRTC UDP media range: `40000-40031`
-- Local listening URLs are shown in the Player broadcast panel.
-
-For remote players:
-
-1. Forward the TCP port and UDP range to the GM computer, preserving port numbers.
-2. Enter the public IPv4 address in Settings.
-3. Start broadcasting and share a listening URL.
-4. Keep the desktop app open during the session.
-
-Networks that block UDP may need optional STUN/TURN settings in the same Settings dialog.
-
-## Discord broadcast
-
-1. Create a bot in the [Discord Developer Portal](https://discord.com/developers/applications), then copy its bot token.
-2. Invite it to each server where you want to broadcast, with **View Channel**, **Connect**, and **Speak** permissions.
-3. In Antiphon Settings, save the token under **Discord bot**. The token is protected by the operating system credential store and is never shown again.
-4. Use the Discord broadcast panel to select a voice channel. Selecting another channel moves the same bot there.
-
-Discord and browser player broadcasts can run at the same time. Set `ANTIPHON_DISCORD_ENABLED=false` to hide and disable the Discord integration.
-
-## Checks and packaging
-
-```sh
-npm run build
-npm test
-npm run test:desktop
-RPG_TEST_LIBRARY="/path/to/RPG Music & Ambience" npm run test:desktop
-npm run package
-```
-
-`npm test` covers indexing, classification, local audio streaming, single-port signaling, and an eight-listener WebRTC relay test. `npm run test:desktop` launches Electron and verifies indexing, mixing, classification edits, restart persistence, stereo separation, live player audio, pause behavior, and reconnects. The optional `RPG_TEST_LIBRARY` smoke test indexes a real Ogg collection without changing its files. `npm run package` creates installers for the current OS.
-
-## Releases
-
-Publishing a GitHub Release runs the release workflow and attaches an unsigned Windows x64 installer, universal macOS disk image, and Linux x64 DEB, AppImage, and RPM packages. The unsigned Windows and macOS downloads may show operating-system security warnings.
+**AI disclosure:** AI coding tools have been used in the development of Antiphon.

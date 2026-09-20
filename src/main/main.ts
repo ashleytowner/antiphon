@@ -43,7 +43,7 @@ app.whenReady().then(async () => {
   });
   const window = new BrowserWindow({
     width: 1400, height: 950, minWidth: 1000, minHeight: 650,
-    backgroundColor: '#11151e', title: 'Antiphon',
+    backgroundColor: '#ffffff', title: 'Antiphon',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false }
   });
   window.setMenuBarVisibility(false);

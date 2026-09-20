@@ -47,7 +47,7 @@ export class PlayerServer {
   private async handle(req: IncomingMessage, res: ServerResponse) {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'");
     const reply = (code: number, data: unknown) => { if (!res.destroyed) { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data)); } };
     try {
       const route = (req.url ?? '/').split('?')[0];

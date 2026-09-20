@@ -11,6 +11,7 @@ A local-first Electron application for tabletop music, ambience, and sound effec
 - Click-to-play multitrack mixer: independent play/pause, per-track volume, loop/stop toggle, GM-only listening volume, and one-shot SFX defaults.
 - Serves a minimal player page with play/pause, personal volume, connection status, live-position listening, pause-as-mute, and automatic reconnect.
 - Low-latency WebRTC broadcast using stereo Opus. GM relative volumes are shared; every listener has an independent master volume.
+- Optional Discord bot output that sends the same live mix to one selected voice channel at a time.
 
 ## Run it
 
@@ -39,6 +40,15 @@ For remote players:
 4. Keep the desktop app open during the session.
 
 Networks that block UDP may need optional STUN/TURN settings in the same Settings dialog.
+
+## Discord broadcast
+
+1. Create a bot in the [Discord Developer Portal](https://discord.com/developers/applications), then copy its bot token.
+2. Invite it to each server where you want to broadcast, with **View Channel**, **Connect**, and **Speak** permissions.
+3. In Antiphon Settings, save the token under **Discord bot**. The token is protected by the operating system credential store and is never shown again.
+4. Use the Discord broadcast panel to select a voice channel. Selecting another channel moves the same bot there.
+
+Discord and browser player broadcasts can run at the same time. Set `ANTIPHON_DISCORD_ENABLED=false` to hide and disable the Discord integration.
 
 ## Checks and packaging
 

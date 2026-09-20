@@ -18,6 +18,8 @@
     "test:desktop": "npm run build && playwright test"
   },
   "dependencies": {
+    "@discordjs/voice": "^0.19.2",
+    "discord.js": "^14.27.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "werift": "^0.24.4"

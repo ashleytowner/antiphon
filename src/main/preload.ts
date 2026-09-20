@@ -10,7 +10,14 @@ const api: DesktopAPI = {
   classify: (id, value) => ipcRenderer.invoke('library:edit', id, value),
   broadcast: offer => ipcRenderer.invoke('broadcast:start', offer),
   stopBroadcast: () => ipcRenderer.invoke('broadcast:stop'),
+  enablePlayerListeners: () => ipcRenderer.invoke('broadcast:enable-listeners'),
+  disablePlayerListeners: () => ipcRenderer.invoke('broadcast:disable-listeners'),
   serverStatus: () => ipcRenderer.invoke('server:status'),
+  discordStatus: () => ipcRenderer.invoke('discord:status'),
+  discordChannels: () => ipcRenderer.invoke('discord:channels'),
+  saveDiscordToken: token => ipcRenderer.invoke('discord:token', token),
+  connectDiscord: channel => ipcRenderer.invoke('discord:connect', channel),
+  disconnectDiscord: () => ipcRenderer.invoke('discord:disconnect'),
   copyText: text => ipcRenderer.invoke('clipboard:write', text),
   onScan: callback => {
     const listener = (_event: Electron.IpcRendererEvent, value: ScanProgress) => callback(value);

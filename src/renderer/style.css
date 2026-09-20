@@ -69,6 +69,12 @@ header { min-height: 90px; padding: 20px 30px; display: flex; align-items: cente
 .listen-url { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; }
 .listen-url code { overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); }
 .listen-url button { padding: 4px 6px; }
+.discord-broadcast { max-height: 260px; overflow: auto; flex-shrink: 0; }
+.discord-broadcast .section-heading button { width: auto; }
+.discord-channels { display: grid; gap: 10px; margin-top: 12px; }
+.discord-channels > div { display: grid; gap: 6px; }
+.discord-channels strong { font-size: 11px; color: var(--muted); }
+.discord-channels button { text-align: left; font-size: 11px; padding: 6px 8px; }
 .empty { text-align: center; padding: 70px 20px; color: var(--muted); }.empty > span { font-size: 40px; color: var(--ink); }.empty h3 { margin: 15px 0 10px; color: var(--ink); font-size: 17px; }.empty p { line-height: 1.7; font-size: 13px; margin-bottom: 20px; }.empty.compact { padding: 30px 0; }
 .banner { padding: 12px 30px; display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--danger); border-bottom: var(--border); }
 .error { color: var(--error); overflow-wrap: anywhere; }

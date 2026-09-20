@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { Facets, LibraryQuery, LibraryResult, ScanProgress, ServerStatus, Settings, Track } from '../shared/types';
+import type { DiscordStatus, DiscordVoiceChannel, Facets, LibraryQuery, LibraryResult, ScanProgress, ServerStatus, Settings, Track } from '../shared/types';
 import { Mixer, type Channel } from './mixer';
 import './style.css';
 
@@ -39,16 +39,18 @@ function ClassificationEditor({ track, facets, close, saved }: { track: Track; f
   </section></div>;
 }
 
-function SettingsEditor({ initial, close, saved }: { initial: Settings; close: () => void; saved: () => Promise<void> }) {
+function SettingsEditor({ initial, discord, close, saved }: { initial: Settings; discord: DiscordStatus; close: () => void; saved: () => Promise<void> }) {
   const [value, setValue] = useState(initial);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [discordToken, setDiscordToken] = useState('');
+  const [removeDiscordToken, setRemoveDiscordToken] = useState(false);
   const set = (key: keyof Settings, input: string | number) => setValue(current => ({ ...current, [key]: input }));
   return <div className="overlay" onKeyDown={e => { if (e.key === 'Escape' && !busy) close(); }}><section className="dialog settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <h2 id="settings-title">Library & broadcast settings</h2>
     <form onSubmit={async e => {
       e.preventDefault(); setBusy(true); setError('');
-      try { await mixer.stopBroadcast(); if (value.libraryRoot !== initial.libraryRoot) mixer.clear(); await api.saveSettings(value); await saved(); }
+      try { await mixer.stopAllBroadcasts(); if (value.libraryRoot !== initial.libraryRoot) mixer.clear(); await api.saveSettings(value); if (removeDiscordToken) await api.saveDiscordToken(null); else if (discordToken.trim()) await api.saveDiscordToken(discordToken.trim()); await saved(); }
       catch (error) { setError(describe(error)); }
       finally { setBusy(false); }
     }}>
@@ -62,9 +64,38 @@ function SettingsEditor({ initial, close, saved }: { initial: Settings; close: (
         <label>TURN URL<input placeholder="turn:turn.example.com:3478?transport=tcp" value={value.turnUrl} onChange={e => set('turnUrl', e.target.value.trim())} /></label>
         <div className="settings-grid"><label>TURN username<input autoComplete="off" value={value.turnUsername} onChange={e => set('turnUsername', e.target.value)} /></label><label>TURN credential<input type="password" autoComplete="off" value={value.turnCredential} onChange={e => set('turnCredential', e.target.value)} /></label></div>
       </details>
+      <details><summary>Discord bot</summary>
+        <label>Bot token<input type="password" autoComplete="new-password" placeholder={discord.configured ? '•••••••• (saved — leave blank to keep)' : 'Paste a Discord bot token'} value={discordToken} onChange={e => { setDiscordToken(e.target.value); setRemoveDiscordToken(false); }} /></label>
+        <p className="muted small">The token is stored using your operating system’s protected storage. Invite the bot with View Channel, Connect, and Speak permissions.</p>
+        {discord.configured && <label className="check"><input type="checkbox" checked={removeDiscordToken} onChange={e => { setRemoveDiscordToken(e.target.checked); if (e.target.checked) setDiscordToken(''); }} />Remove saved Discord bot token</label>}
+        {!discord.enabled && <p className="notice">Discord broadcasting is disabled by ANTIPHON_DISCORD_ENABLED=false.</p>}
+      </details>
       {error && <p className="error" role="alert">{error}</p>}<div className="actions"><button type="button" disabled={busy} onClick={close}>Cancel</button><button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save settings'}</button></div>
     </form>
   </section></div>;
+}
+
+function DiscordBroadcast({ status, channels, refresh, report }: { status: DiscordStatus; channels: DiscordVoiceChannel[]; refresh: () => Promise<void>; report: (error: unknown) => void }) {
+  const [busy, setBusy] = useState(false);
+  if (!status.enabled) return null;
+  const connect = async (channel: DiscordVoiceChannel) => {
+    setBusy(true);
+    try { await mixer.startDiscord(); await api.connectDiscord(channel); await refresh(); }
+    catch (error) { await mixer.stopDiscord(); report(error); }
+    finally { setBusy(false); }
+  };
+  const grouped = channels.reduce((groups, channel) => {
+    const group = groups.get(channel.guildName) ?? [];
+    group.push(channel); groups.set(channel.guildName, group);
+    return groups;
+  }, new Map<string, DiscordVoiceChannel[]>());
+  return <section className="broadcast discord-broadcast"><div className="section-heading"><h3>Discord broadcast</h3><button className="quiet small" disabled={!status.configured || busy} onClick={() => void refresh().catch(report)}>Refresh channels</button></div>
+    {!status.configured ? <p className="small muted">Save a Discord bot token in Settings to broadcast your live mix to a server.</p> : <>
+      <p className={`small ${status.connected ? 'live-text' : 'muted'}`} role="status">{status.connected && status.channel ? `Live in ${status.channel.guildName} · ${status.channel.name}` : status.error ?? 'Choose a voice channel'}</p>
+      {status.connected && <button className="danger" disabled={busy} onClick={() => { setBusy(true); void api.disconnectDiscord().then(() => mixer.stopDiscord()).then(refresh).catch(report).finally(() => setBusy(false)); }}>Disconnect Discord</button>}
+      <div className="discord-channels">{[...grouped].map(([guild, voiceChannels]) => <div key={guild}><strong>{guild}</strong>{voiceChannels.map(channel => <button key={channel.id} disabled={busy || status.channel?.id === channel.id} onClick={() => void connect(channel)}>{status.channel?.id === channel.id ? '● ' : '▶ '}{channel.name}{channel.type === 'stage' ? ' (Stage)' : ''}</button>)}</div>)}</div>
+    </>}
+  </section>;
 }
 
 function App() {
@@ -81,12 +112,15 @@ function App() {
   const [revision, setRevision] = useState(0);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [server, setServer] = useState<ServerStatus>({ running: false, listeners: 0, broadcasting: false, urls: [] });
+  const [discord, setDiscord] = useState<DiscordStatus>({ enabled: true, configured: false, connected: false });
+  const [discordChannels, setDiscordChannels] = useState<DiscordVoiceChannel[]>([]);
   const [broadcastState, setBroadcastState] = useState(mixer.broadcastState);
   const [master, setMaster] = useState(mixer.master);
   const requestId = useRef(0);
   const refresh = async () => {
-    const [settings, facets, status] = await Promise.all([api.settings(), api.facets(), api.serverStatus()]);
-    setSettings(settings); setFacets(facets); setServer(status); setRevision(v => v + 1);
+    const [settings, facets, status, discord] = await Promise.all([api.settings(), api.facets(), api.serverStatus(), api.discordStatus()]);
+    setSettings(settings); setFacets(facets); setServer(status); setDiscord(discord); setRevision(v => v + 1);
+    if (discord.configured && discord.enabled) setDiscordChannels(await api.discordChannels());
   };
   useEffect(() => {
     void refresh().catch(error => setError(describe(error)));
@@ -96,7 +130,7 @@ function App() {
     });
     const unsubscribeMixer = mixer.subscribe(() => { setChannels(mixer.list()); setBroadcastState(mixer.broadcastState); setMaster(mixer.master); });
     try { const saved = localStorage.getItem('gm-volume'); if (saved !== null) mixer.setMaster(Math.min(1, Math.max(0, Number(saved) || 0))); } catch { /* Optional preference. */ }
-    const poll = setInterval(() => { void api.serverStatus().then(setServer).catch(error => setError(describe(error))); }, 2000);
+    const poll = setInterval(() => { void Promise.all([api.serverStatus(), api.discordStatus()]).then(([server, discord]) => { setServer(server); setDiscord(discord); }).catch(error => setError(describe(error))); }, 2000);
     return () => { unsubscribe(); unsubscribeMixer(); clearInterval(poll); };
   }, []);
   useEffect(() => {
@@ -126,10 +160,11 @@ function App() {
     <aside className="mixer-panel"><div className="section-heading"><div><p className="eyebrow">BUILD THE SCENE</p><h2>Live mixer <span className="count">{channels.length}</span></h2></div><button className="quiet small" disabled={!channels.length} onClick={() => mixer.clear()}>Stop all</button></div>
       <div className="monitor"><label>Your listening volume <strong>{Math.round(master * 100)}%</strong><input aria-label="GM master volume" type="range" min="0" max="1" step="0.01" value={master} onChange={e => { const value = Number(e.target.value); mixer.setMaster(value); try { localStorage.setItem('gm-volume', String(value)); } catch { /* Optional preference. */ } }} /></label><p className="small muted">Only affects your speakers. Players have their own volume.</p></div>
       <div className="channels">{channels.map(channel => <ChannelCard key={channel.id} channel={channel} />)}{!channels.length && <div className="empty compact"><span>≋</span><h3>Set the scene</h3><p>Play a track from the library.<br />Layer music, ambience, and SFX here.</p></div>}</div>
-      <section className="broadcast"><div className="section-heading"><h3>Player broadcast</h3><span className={`small ${server.broadcasting ? 'live-text' : 'muted'}`}>{server.listeners} listening</span></div><button className={mixer.wantsBroadcast ? 'danger' : 'primary'} disabled={!server.running} onClick={() => { void (mixer.wantsBroadcast ? mixer.stopBroadcast() : mixer.startBroadcast()).catch(error => setError(describe(error))); }}>{mixer.wantsBroadcast ? 'Stop broadcast' : 'Start broadcast'}</button><p className="small muted" role="status">{server.error ?? broadcastState}</p>{server.urls.map(url => <div className="listen-url" key={url}><code>{url}</code><button className="quiet small" onClick={() => { void api.copyText(url).catch(error => setError(describe(error))); }}>Copy</button></div>)}<p className="small muted">Share the public address with remote players. Keep this app open during your session.</p></section>
+      <section className="broadcast"><div className="section-heading"><h3>Player broadcast</h3><span className={`small ${server.broadcasting ? 'live-text' : 'muted'}`}>{server.listeners} listening</span></div><button className={mixer.playerBroadcast ? 'danger' : 'primary'} disabled={!server.running} onClick={() => { void (mixer.playerBroadcast ? mixer.stopBroadcast() : mixer.startBroadcast()).catch(error => setError(describe(error))); }}>{mixer.playerBroadcast ? 'Stop broadcast' : 'Start broadcast'}</button><p className="small muted" role="status">{server.error ?? broadcastState}</p>{server.urls.map(url => <div className="listen-url" key={url}><code>{url}</code><button className="quiet small" onClick={() => { void api.copyText(url).catch(error => setError(describe(error))); }}>Copy</button></div>)}<p className="small muted">Share the public address with remote players. Keep this app open during your session.</p></section>
+      <DiscordBroadcast status={discord} channels={discordChannels} refresh={async () => { const [status, channels] = await Promise.all([api.discordStatus(), api.discordChannels()]); setDiscord(status); setDiscordChannels(channels); }} report={error => setError(describe(error))} />
     </aside></div>
     {edit && <ClassificationEditor track={edit} facets={facets} close={() => setEdit(undefined)} saved={() => { setEdit(undefined); void refresh().catch(error => setError(describe(error))); }} />}
-    {settingsOpen && settings && <SettingsEditor initial={settings} close={() => setSettingsOpen(false)} saved={async () => { setSettingsOpen(false); setQuery({}); await refresh(); }} />}
+    {settingsOpen && settings && <SettingsEditor initial={settings} discord={discord} close={() => setSettingsOpen(false)} saved={async () => { setSettingsOpen(false); setQuery({}); await refresh(); }} />}
   </>;
 }
 createRoot(document.getElementById('root')!).render(<App />);

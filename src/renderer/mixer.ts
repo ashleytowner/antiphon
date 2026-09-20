@@ -26,6 +26,8 @@ export class Mixer {
   private connecting = false;
   master = 0.8;
   wantsBroadcast = false;
+  playerBroadcast = false;
+  private discordBroadcast = false;
   broadcastState = 'Offline';
   constructor(private api: DesktopAPI) {}
   subscribe(callback: () => void) { this.callbacks.add(callback); return () => { this.callbacks.delete(callback); }; }
@@ -96,7 +98,18 @@ export class Mixer {
   }
   clear() { for (const id of this.channels.keys()) this.remove(id); }
   async startBroadcast() {
+    this.playerBroadcast = true;
     this.wantsBroadcast = true;
+    await this.api.enablePlayerListeners();
+    await this.ensureBroadcast();
+  }
+  async startDiscord() {
+    this.discordBroadcast = true;
+    this.wantsBroadcast = true;
+    if (!this.playerBroadcast) await this.api.disablePlayerListeners();
+    await this.ensureBroadcast();
+  }
+  private async ensureBroadcast() {
     if (this.connecting) return;
     this.connecting = true;
     const generation = ++this.generation;
@@ -133,9 +146,25 @@ export class Mixer {
   }
   private scheduleReconnect() {
     if (!this.wantsBroadcast || this.reconnectTimer) return;
-    this.reconnectTimer = setTimeout(() => { this.reconnectTimer = undefined; if (this.wantsBroadcast) void this.startBroadcast(); }, 3000);
+    this.reconnectTimer = setTimeout(() => { this.reconnectTimer = undefined; if (this.wantsBroadcast) void this.ensureBroadcast(); }, 3000);
   }
   async stopBroadcast() {
+    this.playerBroadcast = false;
+    await this.api.disablePlayerListeners();
+    if (this.discordBroadcast) { this.emit(); return; }
+    await this.stopSource();
+  }
+  async stopDiscord() {
+    this.discordBroadcast = false;
+    if (this.playerBroadcast) { this.emit(); return; }
+    await this.stopSource();
+  }
+  async stopAllBroadcasts() {
+    this.playerBroadcast = false; this.discordBroadcast = false;
+    await this.api.disablePlayerListeners();
+    await this.stopSource();
+  }
+  private async stopSource() {
     this.wantsBroadcast = false; this.generation++;
     clearTimeout(this.reconnectTimer); this.reconnectTimer = undefined;
     const peer = this.peer; this.peer = undefined; peer?.close();

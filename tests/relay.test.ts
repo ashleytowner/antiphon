@@ -12,6 +12,8 @@ async function until(check: () => boolean, timeout = 10000) {
 }
 test('relays live Opus to eight listeners, supports late joins, and releases sessions', { timeout: 90000 }, async () => {
   const relay = new AudioRelay(testSettings);
+  const opus: Buffer[] = [];
+  const unsubscribeOpus = relay.subscribeOpus(packet => opus.push(packet));
   const publisher = peer(true);
   const listeners: RTCPeerConnection[] = [];
   let timer: NodeJS.Timeout | undefined;
@@ -41,6 +43,8 @@ test('relays live Opus to eight listeners, supports late joins, and releases ses
       await listener.setRemoteDescription(answer);
     }));
     await until(() => counts.length === 8 && counts.every(c => c > 4));
+    assert.ok(opus.length > 4, 'Opus output subscribers receive the live mix');
+    assert.deepEqual(opus[0], Buffer.from([0xf8, 0xff, 0xfe]));
     assert.equal(relay.count, 8);
     assert.ok(Math.max(...timestamps) - Math.min(...timestamps) <= 4800, 'listeners receive the same live timeline');
     assert.equal(relay.touch(ids[0]), true);
@@ -52,6 +56,7 @@ test('relays live Opus to eight listeners, supports late joins, and releases ses
     assert.equal(relay.count, 0);
     await assert.rejects(relay.listen(listeners[0].localDescription!), /not started/);
   } finally {
+    unsubscribeOpus();
     clearInterval(timer);
     await Promise.all([publisher.close(), ...listeners.map(p => p.close()), relay.close()]);
   }

@@ -12,6 +12,8 @@ export class AudioRelay {
   private unsubscribe?: () => void;
   private sweep: NodeJS.Timeout;
   private closed = false;
+  private opusSubscribers = new Set<(payload: Buffer) => void>();
+  private listenersEnabled = true;
   constructor(private settings: Settings) {
     this.sweep = setInterval(() => {
       for (const [id, listener] of this.listeners) if (Date.now() - listener.touched > 45_000) void this.remove(id);
@@ -42,6 +44,8 @@ export class AudioRelay {
       this.unsubscribe = track.onReceiveRtp.subscribe(packet => {
         // sendRtp rewrites the header, so each destination receives its own buffer.
         const data = packet.serialize();
+        // Discord accepts the same 48 kHz Opus frames that the desktop sends over WebRTC.
+        for (const subscriber of this.opusSubscribers) subscriber(Buffer.from(packet.payload));
         for (const { peer: listener } of this.listeners.values()) if (listener.connectionState === 'connected') {
           const sender = listener.getSenders()[0];
           void sender.sendRtp(Buffer.from(data)).catch(() => { /* ICE state handles network loss. */ });
@@ -55,8 +59,12 @@ export class AudioRelay {
       return { type: peer.localDescription!.type, sdp: peer.localDescription!.sdp };
     } catch (error) { if (this.publisher === peer) this.publisher = undefined; await peer.close(); throw error; }
   }
+  subscribeOpus(callback: (payload: Buffer) => void) {
+    this.opusSubscribers.add(callback);
+    return () => { this.opusSubscribers.delete(callback); };
+  }
   async listen(offer: RTCSessionDescriptionInit) {
-    if (this.closed || !this.broadcasting) throw new Error('The GM has not started broadcasting yet.');
+    if (this.closed || !this.broadcasting || !this.listenersEnabled) throw new Error('The GM has not started player broadcasting yet.');
     if (this.listeners.size >= 12) throw new Error('All listener slots are occupied. Try again shortly.');
     const id = randomUUID();
     const peer = this.createPeer();
@@ -79,5 +87,7 @@ export class AudioRelay {
     await Promise.all([...this.listeners.keys()].map(id => this.remove(id)));
     await peer?.close();
   }
-  async close() { this.closed = true; clearInterval(this.sweep); await this.stopPublisher(); }
+  enableListeners() { this.listenersEnabled = true; }
+  async disableListeners() { this.listenersEnabled = false; await Promise.all([...this.listeners.keys()].map(id => this.remove(id))); }
+  async close() { this.closed = true; this.opusSubscribers.clear(); clearInterval(this.sweep); await this.stopPublisher(); }
 }

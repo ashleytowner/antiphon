@@ -65,6 +65,10 @@ test('desktop indexes, mixes, classifies and broadcasts audible live audio to a 
     gm.on('pageerror', error => errors.push(error.message));
     gm.on('console', message => { if (process.env.RPG_TEST_DEBUG) console.log('GM:', message.text()); });
     await expect(gm.getByRole('heading', { name: 'Antiphon' })).toBeVisible();
+    const panePositions = await gm.locator('.broadcast-panel, .library-panel, .mixer-panel').evaluateAll(panes => panes.map(pane => pane.getBoundingClientRect().x));
+    expect(panePositions).toHaveLength(3);
+    expect(panePositions[0]).toBeLessThan(panePositions[1]);
+    expect(panePositions[1]).toBeLessThan(panePositions[2]);
     await instrument(gm);
     await gm.getByRole('slider', { name: 'GM master volume' }).fill('0');
     await gm.getByRole('button', { name: 'Index audio library', exact: true }).click();

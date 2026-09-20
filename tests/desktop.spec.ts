@@ -49,8 +49,8 @@ test('desktop indexes, mixes, classifies and broadcasts audible live audio to a 
   const directory = await mkdtemp(path.join(os.tmpdir(), 'rpg-desktop-'));
   const library = path.join(directory, 'library');
   const userData = path.join(directory, 'profile');
-  const music = path.join(library, 'Audio Collection/music/fantasy/Adventure');
-  const sfx = path.join(library, 'Audio Collection/sfx/fantasy/Spells');
+  const music = path.join(library, 'music/fantasy/Adventure');
+  const sfx = path.join(library, 'sfx/fantasy/Spells');
   await Promise.all([mkdir(userData), mkdir(music, { recursive: true }), mkdir(sfx, { recursive: true })]);
   await writeFile(path.join(music, 'Test Adventure.wav'), tone(2, 440));
   await writeFile(path.join(music, 'Test Adventure Copy.wav'), tone(2, 440));

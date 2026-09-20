@@ -7,6 +7,7 @@ import { classify, titleMatches } from '../src/main/classify';
 import { Library } from '../src/main/library';
 
 test('classifies structured folders and the agreed album defaults', () => {
+  assert.deepEqual(classify('sfx/scifi/Weapons/Blaster.ogg'), { type: 'SFX', era: 'scifi', genre: 'Weapons', needsReview: false, reason: 'Structured folder hierarchy' });
   assert.deepEqual(classify('Audio Collection/sfx/scifi/Weapons/Blaster.ogg'), { type: 'SFX', era: 'scifi', genre: 'Weapons', needsReview: false, reason: 'Structured folder hierarchy' });
   assert.equal(classify('Any Provider/AMBIENCE/generic/Nature/Rain.ogg').type, 'Ambience');
   assert.equal(classify('Any Provider/effects/scifi/Weapons/Blaster.ogg').needsReview, true);

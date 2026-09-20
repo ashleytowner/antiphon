@@ -8,11 +8,14 @@ export function normalizedTitle(value: string): string {
 
 export function structuredClassification(relativePath: string): Classification | undefined {
   const parts = relativePath.split(/[\\/]/);
-  if (parts.length < 5) return undefined;
-  const type = parts[1]?.toLowerCase() === 'music' ? 'Music'
-    : parts[1]?.toLowerCase() === 'ambience' ? 'Ambience'
-    : parts[1]?.toLowerCase() === 'sfx' ? 'SFX' : undefined;
-  return type ? { type, era: parts[2].toLowerCase(), genre: parts[3], needsReview: false, reason: 'Structured folder hierarchy' } : undefined;
+  // Accept both <type>/<era>/<genre>/<file> and collections which wrap that
+  // hierarchy in one provider directory.
+  const typeIndex = ['music', 'ambience', 'sfx'].includes(parts[0]?.toLowerCase()) ? 0
+    : ['music', 'ambience', 'sfx'].includes(parts[1]?.toLowerCase()) ? 1 : -1;
+  if (typeIndex < 0 || parts.length < typeIndex + 4) return undefined;
+  const typeName = parts[typeIndex].toLowerCase();
+  const type = typeName === 'music' ? 'Music' : typeName === 'ambience' ? 'Ambience' : 'SFX';
+  return { type, era: parts[typeIndex + 1].toLowerCase(), genre: parts[typeIndex + 2], needsReview: false, reason: 'Structured folder hierarchy' };
 }
 
 const genreRules: [RegExp, string][] = [

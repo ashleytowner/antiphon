@@ -1,7 +1,7 @@
 {
   "name": "antiphon",
   "desktopName": "antiphon.desktop",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "A local tabletop audio library, mixer, and live broadcast",
   "author": "Chaotic Wizard <contact@chaoticwizard.com> (https://chaoticwizard.com/)",
   "homepage": "https://chaoticwizard.com/",
@@ -15,7 +15,9 @@
     "test": "tsx --test tests/*.test.ts",
     "package": "npm run build && electron-builder --publish never",
     "package:win": "npm run build && electron-builder --win nsis --x64 --publish never",
-    "package:mac": "npm run build && electron-builder --mac dmg --universal --publish never",
+    "prepare:mac": "node scripts/install-macos-davey.mjs",
+    "verify:mac": "node scripts/verify-macos-davey.mjs",
+    "package:mac": "npm run build && npm run prepare:mac && electron-builder --mac dmg --universal --publish never && npm run verify:mac",
     "package:linux": "npm run build && electron-builder --linux --publish never",
     "check": "npm run build && npm test",
     "test:desktop": "npm run build && playwright test"

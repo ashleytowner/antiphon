@@ -17,6 +17,8 @@ import "./style.css";
 
 const api = window.rpg;
 const mixer = new Mixer(api);
+type MissingRemoval =
+  { kind: "track"; track: Track } | { kind: "all"; count: number };
 const describe = (error: unknown) =>
   String(error instanceof Error ? error.message : error).replace(
     /^Error invoking remote method '[^']+': Error: /,
@@ -216,6 +218,57 @@ function ClassificationEditor({
             </button>
           </div>
         </form>
+      </section>
+    </div>
+  );
+}
+
+function RemoveMissingDialog({
+  removal,
+  busy,
+  close,
+  confirm,
+}: {
+  removal: MissingRemoval;
+  busy: boolean;
+  close: () => void;
+  confirm: () => void;
+}) {
+  const all = removal.kind === "all";
+  return (
+    <div
+      className="overlay"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !busy) close();
+      }}
+    >
+      <section
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="remove-missing-title"
+      >
+        <h2 id="remove-missing-title">
+          {all ? "Remove all missing tracks?" : "Remove missing track?"}
+        </h2>
+        {!all && <h3>{removal.track.title}</h3>}
+        {!all && (
+          <p className="muted small path">{removal.track.relativePath}</p>
+        )}
+        <p className="notice">
+          {all
+            ? `This removes ${removal.count.toLocaleString()} missing track${removal.count === 1 ? "" : "s"} from this library.`
+            : "This removes the stale track entry from this library."}{" "}
+          No audio files will be deleted.
+        </p>
+        <div className="actions">
+          <button type="button" autoFocus disabled={busy} onClick={close}>
+            Cancel
+          </button>
+          <button className="danger" disabled={busy} onClick={confirm}>
+            {busy ? "Removing…" : all ? "Remove all missing" : "Remove track"}
+          </button>
+        </div>
       </section>
     </div>
   );
@@ -619,6 +672,8 @@ function LibraryPanel({
   preview,
   scan,
   edit,
+  removeMissing,
+  removeAllMissing,
   openSettings,
   report,
 }: {
@@ -633,6 +688,8 @@ function LibraryPanel({
   preview?: Preview;
   scan: () => Promise<void>;
   edit: (track: Track) => void;
+  removeMissing: (track: Track) => void;
+  removeAllMissing: () => void;
   openSettings: () => void;
   report: (error: unknown) => void;
 }) {
@@ -723,6 +780,15 @@ function LibraryPanel({
             />
             Include missing ({facets.missing})
           </label>
+          {facets.missing > 0 && (
+            <button
+              className="danger small"
+              disabled={scanning}
+              onClick={removeAllMissing}
+            >
+              Remove all missing
+            </button>
+          )}
           <button className="quiet small" onClick={() => setQuery({})}>
             Clear filters
           </button>
@@ -770,18 +836,26 @@ function LibraryPanel({
               <span className={`type-tag ${track.type.toLowerCase()}`}>
                 {track.type}
               </span>
-              <button
-                className={`classify ${track.needsReview ? "review" : "quiet"}`}
-                aria-label={`Classify ${track.title}`}
-                title={track.reason}
-                onClick={() => edit(track)}
-              >
-                {track.missing
-                  ? "Missing"
-                  : track.needsReview
-                    ? "Review"
-                    : "Edit"}
-              </button>
+              {track.missing ? (
+                <button
+                  className="classify danger"
+                  aria-label={`Remove missing ${track.title}`}
+                  title="Remove this missing track from the library"
+                  disabled={scanning}
+                  onClick={() => removeMissing(track)}
+                >
+                  Remove
+                </button>
+              ) : (
+                <button
+                  className={`classify ${track.needsReview ? "review" : "quiet"}`}
+                  aria-label={`Classify ${track.title}`}
+                  title={track.reason}
+                  onClick={() => edit(track)}
+                >
+                  {track.needsReview ? "Review" : "Edit"}
+                </button>
+              )}
             </article>
           );
         })}
@@ -936,6 +1010,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [edit, setEdit] = useState<Track>();
+  const [missingRemoval, setMissingRemoval] = useState<MissingRemoval>();
+  const [removingMissing, setRemovingMissing] = useState(false);
   const [revision, setRevision] = useState(0);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [preview, setPreview] = useState<Preview>();
@@ -1059,6 +1135,35 @@ function App() {
     }
   };
   const report = (error: unknown) => setError(describe(error));
+  const confirmMissingRemoval = async () => {
+    if (!missingRemoval || removingMissing) return;
+    setRemovingMissing(true);
+    setError("");
+    try {
+      if (missingRemoval.kind === "track") {
+        await api.removeMissingTrack(missingRemoval.track.id);
+        if (result.tracks.length === 1 && (query.offset ?? 0) > 0) {
+          setQuery((current) => ({
+            ...current,
+            offset: Math.max(0, (current.offset ?? 0) - LIBRARY_PAGE_SIZE),
+          }));
+        }
+      } else {
+        await api.removeAllMissingTracks();
+        setQuery((current) => ({
+          ...current,
+          includeMissing: false,
+          offset: 0,
+        }));
+      }
+      setMissingRemoval(undefined);
+      await refresh();
+    } catch (error) {
+      setError(describe(error));
+    } finally {
+      setRemovingMissing(false);
+    }
+  };
   return (
     <>
       <header>
@@ -1118,6 +1223,10 @@ function App() {
           preview={preview}
           scan={scan}
           edit={setEdit}
+          removeMissing={(track) => setMissingRemoval({ kind: "track", track })}
+          removeAllMissing={() =>
+            setMissingRemoval({ kind: "all", count: facets.missing })
+          }
           openSettings={() => setSettingsOpen(true)}
           report={report}
         />
@@ -1132,6 +1241,14 @@ function App() {
             setEdit(undefined);
             void refresh().catch((error) => setError(describe(error)));
           }}
+        />
+      )}
+      {missingRemoval && (
+        <RemoveMissingDialog
+          removal={missingRemoval}
+          busy={removingMissing}
+          close={() => setMissingRemoval(undefined)}
+          confirm={() => void confirmMissingRemoval()}
         />
       )}
       {settingsOpen && settings && (

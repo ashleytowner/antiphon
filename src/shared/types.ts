@@ -79,6 +79,8 @@ export interface DesktopAPI {
   scan(): Promise<void>;
   query(query: LibraryQuery): Promise<LibraryResult>;
   facets(): Promise<Facets>;
+  removeMissingTrack(id: number): Promise<void>;
+  removeAllMissingTracks(): Promise<number>;
   classify(
     id: number,
     classification: Pick<Classification, "type" | "era" | "genre">,

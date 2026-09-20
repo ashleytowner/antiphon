@@ -87,9 +87,22 @@ test("indexes each file independently, preserves edits, marks missing, and isola
     assert.equal(library.query(root, {}).total, 1);
     assert.equal(library.query(root, { includeMissing: true }).total, 2);
     assert.equal(library.file(root, id), undefined);
+    const remaining = library.query(root, {}).tracks[0];
+    assert.throws(() => library.removeMissing(root, remaining.id), /not found/);
+    assert.throws(
+      () => library.removeMissing("/another-root", id),
+      /not found/,
+    );
+    library.removeMissing(root, id);
+    assert.equal(library.query(root, { includeMissing: true }).total, 1);
+    await rm(path.join(folder, "Harbor (abc123).ogg"));
+    await library.scan(root);
+    assert.equal(library.removeAllMissing("/another-root"), 0);
+    assert.equal(library.removeAllMissing(root), 1);
+    assert.equal(library.query(root, { includeMissing: true }).total, 0);
     await assert.rejects(library.scan(path.join(root, "does-not-exist")));
     result = library.query(root, {});
-    assert.equal(result.total, 1);
+    assert.equal(result.total, 0);
   } finally {
     library.close();
     await rm(root, { recursive: true, force: true });

@@ -142,6 +142,18 @@ export class Library {
       );
     if (!result.changes) throw new Error("Track not found.");
   }
+  removeMissing(root: string, id: number) {
+    const result = this.db
+      .prepare("DELETE FROM tracks WHERE root=? AND id=? AND missing=1")
+      .run(root, id);
+    if (!result.changes) throw new Error("Missing track not found.");
+  }
+  removeAllMissing(root: string): number {
+    const result = this.db
+      .prepare("DELETE FROM tracks WHERE root=? AND missing=1")
+      .run(root);
+    return Number(result.changes);
+  }
   file(root: string, id: number): string | undefined {
     const row = this.db
       .prepare(

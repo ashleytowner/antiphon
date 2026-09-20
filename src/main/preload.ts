@@ -7,6 +7,9 @@ const api: DesktopAPI = {
   scan: () => ipcRenderer.invoke("library:scan"),
   query: (value) => ipcRenderer.invoke("library:query", value),
   facets: () => ipcRenderer.invoke("library:facets"),
+  removeMissingTrack: (id) => ipcRenderer.invoke("library:remove-missing", id),
+  removeAllMissingTracks: () =>
+    ipcRenderer.invoke("library:remove-all-missing"),
   classify: (id, value) => ipcRenderer.invoke("library:edit", id, value),
   broadcast: (offer) => ipcRenderer.invoke("broadcast:start", offer),
   stopBroadcast: () => ipcRenderer.invoke("broadcast:stop"),

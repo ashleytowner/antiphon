@@ -361,6 +361,66 @@ test("desktop indexes, mixes, classifies and broadcasts audible live audio to a 
   }
 });
 
+test("removes individual and all missing tracks from the library database", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "rpg-missing-"));
+  const library = path.join(directory, "library");
+  const userData = path.join(directory, "profile");
+  const music = path.join(library, "music/fantasy/Adventure");
+  await Promise.all([mkdir(userData), mkdir(music, { recursive: true })]);
+  const first = path.join(music, "First.ogg");
+  const second = path.join(music, "Second.ogg");
+  await Promise.all([writeFile(first, "audio"), writeFile(second, "audio")]);
+  await writeFile(
+    path.join(userData, "settings.json"),
+    JSON.stringify({
+      ...defaults,
+      libraryRoot: library,
+      port: 33000 + (process.pid % 1000),
+    }),
+  );
+  const app = await electron.launch({
+    args: ["."],
+    env: { ...process.env, RPG_USER_DATA: userData, ELECTRON_RUN_AS_NODE: "" },
+  });
+  try {
+    const gm = await app.firstWindow();
+    await gm.getByRole("button", { name: "Index audio library" }).click();
+    await expect(gm.locator(".track")).toHaveCount(2);
+
+    await rm(first);
+    await gm.getByRole("button", { name: "Re-index" }).click();
+    await expect(gm.getByText("Include missing (1)")).toBeVisible();
+    await gm.getByRole("checkbox", { name: /Include missing/ }).check();
+    await gm.getByRole("button", { name: "Remove missing First" }).click();
+    const individualDialog = gm.getByRole("dialog", {
+      name: "Remove missing track?",
+    });
+    await expect(individualDialog).toContainText(
+      "No audio files will be deleted",
+    );
+    await individualDialog
+      .getByRole("button", { name: "Remove track" })
+      .click();
+    await expect(gm.locator(".track")).toHaveCount(1);
+    await expect(gm.getByText("Include missing (0)")).toBeVisible();
+
+    await rm(second);
+    await gm.getByRole("button", { name: "Re-index" }).click();
+    await expect(gm.getByText("Include missing (1)")).toBeVisible();
+    await gm.getByRole("button", { name: "Remove all missing" }).click();
+    const allDialog = gm.getByRole("dialog", {
+      name: "Remove all missing tracks?",
+    });
+    await expect(allDialog).toContainText("1 missing track");
+    await allDialog.getByRole("button", { name: "Remove all missing" }).click();
+    await expect(gm.getByText("Include missing (0)")).toBeVisible();
+    await expect(gm.locator(".track")).toHaveCount(0);
+  } finally {
+    await app.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("indexes and plays the existing Ogg library without modifying source files", async () => {
   const root = process.env.RPG_TEST_LIBRARY;
   test.skip(

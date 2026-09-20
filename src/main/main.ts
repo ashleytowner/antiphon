@@ -210,6 +210,18 @@ app
       library.query(settings.libraryRoot, query ?? {}),
     );
     handle("library:facets", () => library.facets(settings.libraryRoot));
+    handle("library:remove-missing", (id: unknown) => {
+      if (worker || saving)
+        throw new Error("Wait for indexing or settings changes to finish.");
+      if (!Number.isSafeInteger(id) || Number(id) <= 0)
+        throw new Error("Invalid track.");
+      library.removeMissing(settings.libraryRoot, Number(id));
+    });
+    handle("library:remove-all-missing", () => {
+      if (worker || saving)
+        throw new Error("Wait for indexing or settings changes to finish.");
+      return library.removeAllMissing(settings.libraryRoot);
+    });
     handle("library:edit", (id, value) =>
       library.edit(settings.libraryRoot, id, value),
     );

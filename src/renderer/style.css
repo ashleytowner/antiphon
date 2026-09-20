@@ -148,7 +148,7 @@ header {
   font-size: 12px;
   flex-wrap: wrap;
 }
-.filter-options > button {
+.filter-options > button:last-child {
   margin-left: auto;
 }
 .check {

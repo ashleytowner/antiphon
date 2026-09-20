@@ -6,15 +6,18 @@ const version = lockfile.packages['node_modules/@snazzah/davey']?.version;
 
 if (!version) throw new Error('Unable to determine @snazzah/davey version from package-lock.json.');
 
-execFileSync(
-  'npm',
-  [
-    'install',
-    '--no-save',
-    '--package-lock=false',
-    '--ignore-scripts',
-    `@snazzah/davey-darwin-arm64@${version}`,
-    `@snazzah/davey-darwin-x64@${version}`,
-  ],
-  { stdio: 'inherit' },
-);
+for (const arch of ['arm64', 'x64']) {
+  execFileSync(
+    'npm',
+    [
+      'install',
+      '--no-save',
+      '--package-lock=false',
+      '--ignore-scripts',
+      '--os=darwin',
+      `--cpu=${arch}`,
+      `@snazzah/davey-darwin-${arch}@${version}`,
+    ],
+    { stdio: 'inherit' },
+  );
+}

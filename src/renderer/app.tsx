@@ -1,13 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { DiscordStatus, DiscordVoiceChannel, Facets, LibraryQuery, LibraryResult, ScanProgress, ServerStatus, Settings, Track } from '../shared/types';
-import { Mixer, type Channel } from './mixer';
+import { Mixer, type Channel, type Preview } from './mixer';
 import './style.css';
 
 const api = window.rpg;
 const mixer = new Mixer(api);
 const describe = (error: unknown) => String(error instanceof Error ? error.message : error).replace(/^Error invoking remote method '[^']+': Error: /, '');
 const time = (seconds: number) => Number.isFinite(seconds) ? `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2, '0')}` : '—';
+function PreviewIcon({ playing }: { playing: boolean }) {
+  return playing
+    ? <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="4" width="8" height="8" /></svg>
+    : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10L5 10H2z" /><path d="M11 6.25a3 3 0 0 1 0 3.5M12.75 4.5a5.5 5.5 0 0 1 0 7" style={{ fill: 'none' }} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>;
+}
 
 function ChannelCard({ channel }: { channel: Channel }) {
   const [position, setPosition] = useState('0:00');
@@ -111,6 +116,7 @@ function App() {
   const [edit, setEdit] = useState<Track>();
   const [revision, setRevision] = useState(0);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [preview, setPreview] = useState<Preview>();
   const [server, setServer] = useState<ServerStatus>({ running: false, listeners: 0, broadcasting: false, urls: [] });
   const [discord, setDiscord] = useState<DiscordStatus>({ enabled: true, configured: false, connected: false });
   const [discordChannels, setDiscordChannels] = useState<DiscordVoiceChannel[]>([]);
@@ -128,7 +134,7 @@ function App() {
       setProgress(value);
       if (value.phase === 'done' || value.phase === 'error') { setScanning(false); void refresh().catch(error => setError(describe(error))); }
     });
-    const unsubscribeMixer = mixer.subscribe(() => { setChannels(mixer.list()); setBroadcastState(mixer.broadcastState); setMaster(mixer.master); });
+    const unsubscribeMixer = mixer.subscribe(() => { setChannels(mixer.list()); setPreview(mixer.preview ? { ...mixer.preview } : undefined); setBroadcastState(mixer.broadcastState); setMaster(mixer.master); });
     try { const saved = localStorage.getItem('gm-volume'); if (saved !== null) mixer.setMaster(Math.min(1, Math.max(0, Number(saved) || 0))); } catch { /* Optional preference. */ }
     const poll = setInterval(() => { void Promise.all([api.serverStatus(), api.discordStatus()]).then(([server, discord]) => { setServer(server); setDiscord(discord); }).catch(error => setError(describe(error))); }, 2000);
     return () => { unsubscribe(); unsubscribeMixer(); clearInterval(poll); };
@@ -155,7 +161,7 @@ function App() {
         <div className="filter-options"><label className="check"><input type="checkbox" checked={!!query.reviewOnly} onChange={e => filter('reviewOnly', e.target.checked)} />Needs review ({facets.review})</label><label className="check"><input type="checkbox" checked={!!query.includeMissing} onChange={e => filter('includeMissing', e.target.checked)} />Include missing ({facets.missing})</label><button className="quiet small" onClick={() => setQuery({})}>Clear filters</button></div>
       </div>
       <div className="track-list" aria-busy={loading}>
-        {result.tracks.map(track => <article className={`track ${track.missing ? 'missing' : ''}`} key={track.id}><button className="play-track" title={`Play ${track.title}`} aria-label={`Add ${track.title} to mixer`} disabled={track.missing} onClick={() => { void mixer.add(track).catch(error => setError(describe(error))); }}>▶</button><div className="track-info"><h3 title={track.relativePath}>{track.title}</h3><p>{track.album} <span>· {track.era} · {track.genre}</span></p></div><span className={`type-tag ${track.type.toLowerCase()}`}>{track.type}</span><button className={`classify ${track.needsReview ? 'review' : 'quiet'}`} aria-label={`Classify ${track.title}`} title={track.reason} onClick={() => setEdit(track)}>{track.missing ? 'Missing' : track.needsReview ? 'Review' : 'Edit'}</button></article>)}
+        {result.tracks.map(track => { const previewing = preview?.track.id === track.id && preview.playing; return <article className={`track ${track.missing ? 'missing' : ''}`} key={track.id}><button className="play-track" title={`Play ${track.title}`} aria-label={`Add ${track.title} to mixer`} disabled={track.missing} onClick={() => { void mixer.add(track).catch(error => setError(describe(error))); }}>▶</button><button className={`preview-track ${previewing ? 'playing' : ''}`} title={`${previewing ? 'Stop previewing' : 'Preview'} ${track.title}`} aria-label={`${previewing ? 'Stop previewing' : 'Preview'} ${track.title}`} disabled={track.missing} onClick={() => { void mixer.togglePreview(track).catch(error => setError(describe(error))); }}><PreviewIcon playing={previewing} /></button><div className="track-info"><h3 title={track.relativePath}>{track.title}</h3><p>{track.album} <span>· {track.era} · {track.genre}</span></p></div><span className={`type-tag ${track.type.toLowerCase()}`}>{track.type}</span><button className={`classify ${track.needsReview ? 'review' : 'quiet'}`} aria-label={`Classify ${track.title}`} title={track.reason} onClick={() => setEdit(track)}>{track.missing ? 'Missing' : track.needsReview ? 'Review' : 'Edit'}</button></article>; })}
         {!result.tracks.length && <div className="empty"><span>♫</span><h3>{loading ? 'Loading your library…' : facets.total ? 'No matching tracks' : 'Build your sound library'}</h3><p>{facets.total ? 'Try another search or clear your filters.' : 'Choose your audio folder in Settings, then index it to get started.'}</p>{!facets.total && settings?.libraryRoot && <button className="primary" disabled={scanning} onClick={() => void scan()}>Index audio library</button>}{!settings?.libraryRoot && <button onClick={() => setSettingsOpen(true)}>Choose library folder</button>}</div>}
       </div>
       <footer className="pagination"><span>{result.total.toLocaleString()} matching tracks{result.total > 0 && ` · ${(query.offset ?? 0) + 1}–${Math.min((query.offset ?? 0) + 100, result.total)}`}</span><div><button disabled={!query.offset} onClick={() => setQuery(q => ({ ...q, offset: Math.max(0, (q.offset ?? 0) - 100) }))}>Previous</button><button disabled={(query.offset ?? 0) + 100 >= result.total} onClick={() => setQuery(q => ({ ...q, offset: (q.offset ?? 0) + 100 }))}>Next</button></div></footer>

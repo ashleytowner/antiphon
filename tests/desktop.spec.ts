@@ -74,6 +74,10 @@ test('desktop indexes, mixes, classifies and broadcasts audible live audio to a 
     await gm.getByRole('button', { name: 'Index audio library', exact: true }).click();
     await expect(gm.getByText('Indexed 3 audio files')).toBeVisible();
     await expect(gm.locator('.track')).toHaveCount(3);
+    await gm.getByRole('button', { name: 'Preview Test Adventure', exact: true }).click();
+    await expect(gm.getByRole('button', { name: 'Stop previewing Test Adventure', exact: true })).toBeVisible();
+    await expect(gm.locator('.channel')).toHaveCount(0);
+    await gm.getByRole('button', { name: 'Stop previewing Test Adventure', exact: true }).click();
     await gm.getByRole('searchbox').fill('Adventure');
     await expect(gm.locator('.track')).toHaveCount(2);
     await gm.getByRole('button', { name: 'Add Test Adventure to mixer', exact: true }).click();

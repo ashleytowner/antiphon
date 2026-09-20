@@ -12,6 +12,15 @@ export interface Channel {
   playing: boolean;
   error?: string;
 }
+export interface Preview {
+  id: string;
+  track: Track;
+  audio: HTMLAudioElement;
+  source: MediaElementAudioSourceNode;
+  gain: GainNode;
+  playing: boolean;
+  error?: string;
+}
 export class Mixer {
   private context?: AudioContext;
   private bus?: DynamicsCompressorNode;
@@ -19,6 +28,7 @@ export class Mixer {
   private destination?: MediaStreamAudioDestinationNode;
   private keepalive?: OscillatorNode;
   private channels = new Map<string, Channel>();
+  preview?: Preview;
   private callbacks = new Set<() => void>();
   private peer?: RTCPeerConnection;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
@@ -69,6 +79,38 @@ export class Mixer {
     try { await audio.play(); }
     catch (error) { if (this.channels.has(channel.id)) { channel.error = String(error); this.emit(); } }
   }
+  async togglePreview(track: Track) {
+    if (this.preview?.track.id === track.id && this.preview.playing) {
+      this.stopPreview();
+      return;
+    }
+    this.stopPreview();
+    await this.ready();
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous'; audio.preload = 'metadata'; audio.src = `rpg-audio://track/${track.id}`;
+    const source = this.context!.createMediaElementSource(audio);
+    const gain = this.context!.createGain(); gain.gain.value = 1;
+    // Preview reaches the GM monitor only; it must not enter the broadcast bus.
+    source.connect(gain).connect(this.monitor!);
+    const preview: Preview = { id: crypto.randomUUID(), track, audio, source, gain, playing: false };
+    this.preview = preview;
+    const update = () => { if (this.preview !== preview) return; preview.playing = !audio.paused && !audio.ended; this.emit(); };
+    audio.addEventListener('playing', update); audio.addEventListener('pause', update); audio.addEventListener('ended', update);
+    audio.addEventListener('error', () => {
+      if (this.preview !== preview) return;
+      preview.error = 'Unable to decode or read this file. Check that it exists and is a supported audio format.';
+      preview.playing = false; this.emit();
+    });
+    this.emit();
+    try { await audio.play(); }
+    catch (error) { if (this.preview === preview) { preview.error = String(error); this.emit(); } }
+  }
+  stopPreview() {
+    const preview = this.preview; if (!preview) return;
+    this.preview = undefined;
+    preview.audio.pause(); preview.source.disconnect(); preview.gain.disconnect();
+    preview.audio.removeAttribute('src'); preview.audio.load(); this.emit();
+  }
   async toggle(id: string) {
     const channel = this.channels.get(id); if (!channel) return;
     if (!channel.audio.paused) channel.audio.pause();
@@ -96,7 +138,7 @@ export class Mixer {
     this.channels.delete(id); channel.audio.pause(); channel.source.disconnect(); channel.gain.disconnect();
     channel.audio.removeAttribute('src'); channel.audio.load(); this.emit();
   }
-  clear() { for (const id of this.channels.keys()) this.remove(id); }
+  clear() { this.stopPreview(); for (const id of this.channels.keys()) this.remove(id); }
   async startBroadcast() {
     this.playerBroadcast = true;
     this.wantsBroadcast = true;

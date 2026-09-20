@@ -21,7 +21,7 @@
     "package:linux": "npm run build && electron-builder --linux --publish never",
     "check": "npm run build && npm test",
     "test:desktop": "npm run build && playwright test",
-    "format": "prettier write src"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@discordjs/voice": "^0.19.2",

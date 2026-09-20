@@ -1,5 +1,5 @@
-import type { AudioType } from './constants';
-export type { AudioType } from './constants';
+import type { AudioType } from "./constants";
+export type { AudioType } from "./constants";
 export interface Classification {
   type: AudioType;
   era: string;
@@ -24,8 +24,17 @@ export interface LibraryQuery {
   includeMissing?: boolean;
   offset?: number;
 }
-export interface LibraryResult { tracks: Track[]; total: number }
-export interface Facets { eras: string[]; genres: string[]; total: number; review: number; missing: number }
+export interface LibraryResult {
+  tracks: Track[];
+  total: number;
+}
+export interface Facets {
+  eras: string[];
+  genres: string[];
+  total: number;
+  review: number;
+  missing: number;
+}
 export interface Settings {
   libraryRoot: string;
   port: number;
@@ -37,9 +46,25 @@ export interface Settings {
   turnUsername: string;
   turnCredential: string;
 }
-export interface ScanProgress { phase: 'scanning' | 'saving' | 'done' | 'error'; count: number; message: string }
-export interface ServerStatus { running: boolean; listeners: number; broadcasting: boolean; urls: string[]; error?: string }
-export interface DiscordVoiceChannel { id: string; guildId: string; guildName: string; name: string; type: 'voice' | 'stage' }
+export interface ScanProgress {
+  phase: "scanning" | "saving" | "done" | "error";
+  count: number;
+  message: string;
+}
+export interface ServerStatus {
+  running: boolean;
+  listeners: number;
+  broadcasting: boolean;
+  urls: string[];
+  error?: string;
+}
+export interface DiscordVoiceChannel {
+  id: string;
+  guildId: string;
+  guildName: string;
+  name: string;
+  type: "voice" | "stage";
+}
 export interface DiscordStatus {
   enabled: boolean;
   configured: boolean;
@@ -54,8 +79,13 @@ export interface DesktopAPI {
   scan(): Promise<void>;
   query(query: LibraryQuery): Promise<LibraryResult>;
   facets(): Promise<Facets>;
-  classify(id: number, classification: Pick<Classification, 'type' | 'era' | 'genre'>): Promise<void>;
-  broadcast(offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit>;
+  classify(
+    id: number,
+    classification: Pick<Classification, "type" | "era" | "genre">,
+  ): Promise<void>;
+  broadcast(
+    offer: RTCSessionDescriptionInit,
+  ): Promise<RTCSessionDescriptionInit>;
   stopBroadcast(): Promise<void>;
   enablePlayerListeners(): Promise<void>;
   disablePlayerListeners(): Promise<void>;

@@ -9,7 +9,7 @@ permissions:
 
 env:
   # Releases are intentionally unsigned until signing credentials are configured.
-  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+  CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
 jobs:
   windows:

@@ -26,8 +26,9 @@ export function stereoOffer(offer: RTCSessionDescriptionInit): RTCSessionDescrip
     const pattern = new RegExp(`^a=fmtp:${payload} (.*)\\r?$`, 'gm');
     sdp = sdp.replace(pattern, (_line, parameters: string) => {
       const values = parameters.trim().split(';').filter(p => !/^(?:stereo|sprop-stereo|maxaveragebitrate)=/.test(p.trim()));
-      return `a=fmtp:${payload} ${[...values, 'stereo=1', 'sprop-stereo=1', 'maxaveragebitrate=192000'].join(';')}\r`;
+      return `a=fmtp:${payload} ${[...values, 'stereo=1', 'sprop-stereo=1', `maxaveragebitrate=${OPUS_MAX_BITRATE}`].join(';')}\r`;
     });
   }
   return { type: offer.type, sdp };
 }
+import { OPUS_MAX_BITRATE } from './constants';

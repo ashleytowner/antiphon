@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { classify, structuredClassification, titleMatches } from './classify';
+import { AUDIO_TYPES, LIBRARY_PAGE_SIZE } from '../shared/constants';
 import type { Classification, Facets, LibraryQuery, LibraryResult, ScanProgress, Track } from '../shared/types';
 
 const extensions = new Set(['.ogg', '.oga', '.opus', '.mp3', '.wav', '.flac', '.m4a', '.aac', '.webm', '.mp4', '.aif', '.aiff']);
@@ -32,7 +33,7 @@ export class Library {
     const condition = where.join(' AND ');
     const total = Number(this.db.prepare(`SELECT count(*) AS n FROM tracks WHERE ${condition}`).get(...args)!.n);
     const offset = Math.max(0, Math.floor(Number(query.offset) || 0));
-    const rows = this.db.prepare(`SELECT * FROM tracks WHERE ${condition} ORDER BY title COLLATE NOCASE, relativePath LIMIT 100 OFFSET ?`).all(...args, offset);
+    const rows = this.db.prepare(`SELECT * FROM tracks WHERE ${condition} ORDER BY title COLLATE NOCASE, relativePath LIMIT ${LIBRARY_PAGE_SIZE} OFFSET ?`).all(...args, offset);
     return { tracks: rows.map(row => ({ ...row, needsReview: !!row.needsReview, missing: !!row.missing, manual: !!row.manual }) as unknown as Track), total };
   }
   facets(root: string): Facets {
@@ -41,7 +42,7 @@ export class Library {
     return { eras: values('era'), genres: values('genre'), total: Number(counts.total), review: Number(counts.review), missing: Number(counts.missing) };
   }
   edit(root: string, id: number, value: Pick<Classification, 'type' | 'era' | 'genre'>) {
-    if (!['Music', 'Ambience', 'SFX'].includes(value.type) || !value.era?.trim() || !value.genre?.trim() || value.era.length > 100 || value.genre.length > 100) throw new Error('Provide one valid type, era, and genre.');
+    if (!AUDIO_TYPES.includes(value.type) || !value.era?.trim() || !value.genre?.trim() || value.era.length > 100 || value.genre.length > 100) throw new Error('Provide one valid type, era, and genre.');
     const result = this.db.prepare('UPDATE tracks SET type=?, era=?, genre=?, needsReview=0, reason=?, manual=1 WHERE root=? AND id=?')
       .run(value.type, value.era.trim(), value.genre.trim(), 'Manually reviewed', root, id);
     if (!result.changes) throw new Error('Track not found.');

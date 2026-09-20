@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { RTCPeerConnection, MediaStreamTrack, useOPUS, type RTCSessionDescriptionInit } from 'werift';
 import type { Settings } from '../shared/types';
+import { OPUS_MAX_BITRATE } from '../shared/constants';
 
-const codec = () => useOPUS({ parameters: 'minptime=10;useinbandfec=1;stereo=1;sprop-stereo=1;maxaveragebitrate=192000' });
+const codec = () => useOPUS({ parameters: `minptime=10;useinbandfec=1;stereo=1;sprop-stereo=1;maxaveragebitrate=${OPUS_MAX_BITRATE}` });
 interface Listener { peer: RTCPeerConnection; touched: number }
 
 /** The desktop encodes once; this endpoint forwards Opus packets without transcoding. */

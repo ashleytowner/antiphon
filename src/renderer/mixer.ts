@@ -1,5 +1,6 @@
 import type { DesktopAPI, Track } from '../shared/types';
 import { gatherIce, preferOpus, stereoOffer } from '../shared/rtc';
+import { OPUS_MAX_BITRATE } from '../shared/constants';
 
 export interface Channel {
   id: string;
@@ -207,7 +208,7 @@ export class Mixer {
       if (generation !== this.generation) return;
       await peer.setRemoteDescription(answer);
       const parameters = sender.getParameters();
-      if (parameters.encodings.length) { parameters.encodings[0].maxBitrate = 192000; await sender.setParameters(parameters); }
+      if (parameters.encodings.length) { parameters.encodings[0].maxBitrate = OPUS_MAX_BITRATE; await sender.setParameters(parameters); }
     } catch (error) {
       if (generation !== this.generation) return;
       this.broadcastState = `Connection error: ${String(error)}`; this.emit(); this.scheduleReconnect();

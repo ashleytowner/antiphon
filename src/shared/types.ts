@@ -1,4 +1,5 @@
-export type AudioType = 'Music' | 'Ambience' | 'SFX';
+import type { AudioType } from './constants';
+export type { AudioType } from './constants';
 export interface Classification {
   type: AudioType;
   era: string;

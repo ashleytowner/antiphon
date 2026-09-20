@@ -104,6 +104,58 @@ function DiscordBroadcast({ status, channels, refresh, report }: { status: Disco
   </section>;
 }
 
+function BroadcastPanel({ server, discord, channels, broadcastState, refreshDiscord, report }: {
+  server: ServerStatus;
+  discord: DiscordStatus;
+  channels: DiscordVoiceChannel[];
+  broadcastState: string;
+  refreshDiscord: () => Promise<void>;
+  report: (error: unknown) => void;
+}) {
+  return <aside className="broadcast-panel" aria-label="Broadcast controls">
+    <section className="broadcast"><div className="section-heading"><h3>Player broadcast</h3><span className={`small ${server.broadcasting ? 'live-text' : 'muted'}`}>{server.listeners} listening</span></div><button className={mixer.playerBroadcast ? 'danger' : 'primary'} disabled={!server.running} onClick={() => { void (mixer.playerBroadcast ? mixer.stopBroadcast() : mixer.startBroadcast()).catch(report); }}>{mixer.playerBroadcast ? 'Stop broadcast' : 'Start broadcast'}</button><p className="small muted" role="status">{server.error ?? broadcastState}</p>{server.urls.map(url => <div className="listen-url" key={url}><code>{url}</code><button className="quiet small" onClick={() => { void api.copyText(url).catch(report); }}>Copy</button></div>)}<p className="small muted">Share the public address with remote players. Keep this app open during your session.</p></section>
+    <DiscordBroadcast status={discord} channels={channels} refresh={refreshDiscord} report={report} />
+  </aside>;
+}
+
+function LibraryPanel({ settings, facets, result, query, setQuery, progress, scanning, loading, preview, scan, edit, openSettings, report }: {
+  settings?: Settings;
+  facets: Facets;
+  result: LibraryResult;
+  query: LibraryQuery;
+  setQuery: React.Dispatch<React.SetStateAction<LibraryQuery>>;
+  progress?: ScanProgress;
+  scanning: boolean;
+  loading: boolean;
+  preview?: Preview;
+  scan: () => Promise<void>;
+  edit: (track: Track) => void;
+  openSettings: () => void;
+  report: (error: unknown) => void;
+}) {
+  const filter = (field: keyof LibraryQuery, value: unknown) => setQuery(current => ({ ...current, [field]: value, offset: 0 }));
+  return <section className="library-panel">
+    <div className="section-heading"><div><p className="eyebrow">YOUR COLLECTION</p><h2>Audio library <span className="count">{facets.total.toLocaleString()}</span></h2></div><button disabled={scanning || !settings?.libraryRoot} onClick={() => void scan()}>{scanning ? 'Indexing…' : '↻ Re-index'}</button></div>
+    {progress && <div className={`scan-status ${progress.phase === 'error' ? 'error' : ''}`} role="status">{scanning && <progress />}<span>{progress.message}</span>{scanning && <strong>{progress.count.toLocaleString()} files</strong>}</div>}
+    <div className="filters"><input className="search" type="search" aria-label="Search tracks" placeholder="Search tracks, albums, and categories…" value={query.search ?? ''} onChange={e => filter('search', e.target.value)} />
+      <div className="filter-row"><select aria-label="Filter by type" value={query.type ?? ''} onChange={e => filter('type', e.target.value)}><option value="">All types</option>{AUDIO_TYPES.map(v => <option key={v}>{v}</option>)}</select><select aria-label="Filter by era" value={query.era ?? ''} onChange={e => filter('era', e.target.value)}><option value="">All eras</option>{facets.eras.map(v => <option key={v}>{v}</option>)}</select><select aria-label="Filter by genre" value={query.genre ?? ''} onChange={e => filter('genre', e.target.value)}><option value="">All genres</option>{facets.genres.map(v => <option key={v}>{v}</option>)}</select></div>
+      <div className="filter-options"><label className="check"><input type="checkbox" checked={!!query.reviewOnly} onChange={e => filter('reviewOnly', e.target.checked)} />Needs review ({facets.review})</label><label className="check"><input type="checkbox" checked={!!query.includeMissing} onChange={e => filter('includeMissing', e.target.checked)} />Include missing ({facets.missing})</label><button className="quiet small" onClick={() => setQuery({})}>Clear filters</button></div>
+    </div>
+    <div className="track-list" aria-busy={loading}>
+      {result.tracks.map(track => { const previewing = preview?.track.id === track.id && preview.playing; return <article className={`track ${track.missing ? 'missing' : ''}`} key={track.id}><button className="play-track" title={`Play ${track.title}`} aria-label={`Add ${track.title} to mixer`} disabled={track.missing} onClick={() => { void mixer.add(track).catch(report); }}>▶</button><button className={`preview-track ${previewing ? 'playing' : ''}`} title={`${previewing ? 'Stop previewing' : 'Preview'} ${track.title}`} aria-label={`${previewing ? 'Stop previewing' : 'Preview'} ${track.title}`} disabled={track.missing} onClick={() => { void mixer.togglePreview(track).catch(report); }}><PreviewIcon playing={previewing} /></button><div className="track-info"><h3 title={track.relativePath}>{track.title}</h3><p>{track.album} <span>· {track.era} · {track.genre}</span></p></div><span className={`type-tag ${track.type.toLowerCase()}`}>{track.type}</span><button className={`classify ${track.needsReview ? 'review' : 'quiet'}`} aria-label={`Classify ${track.title}`} title={track.reason} onClick={() => edit(track)}>{track.missing ? 'Missing' : track.needsReview ? 'Review' : 'Edit'}</button></article>; })}
+      {!result.tracks.length && <div className="empty"><span>♫</span><h3>{loading ? 'Loading your library…' : facets.total ? 'No matching tracks' : 'Build your sound library'}</h3><p>{facets.total ? 'Try another search or clear your filters.' : 'Choose your audio folder in Settings, then index it to get started.'}</p>{!facets.total && settings?.libraryRoot && <button className="primary" disabled={scanning} onClick={() => void scan()}>Index audio library</button>}{!settings?.libraryRoot && <button onClick={openSettings}>Choose library folder</button>}</div>}
+    </div>
+    <footer className="pagination"><span>{result.total.toLocaleString()} matching tracks{result.total > 0 && ` · ${(query.offset ?? 0) + 1}–${Math.min((query.offset ?? 0) + LIBRARY_PAGE_SIZE, result.total)}`}</span><div><button disabled={!query.offset} onClick={() => setQuery(q => ({ ...q, offset: Math.max(0, (q.offset ?? 0) - LIBRARY_PAGE_SIZE) }))}>Previous</button><button disabled={(query.offset ?? 0) + LIBRARY_PAGE_SIZE >= result.total} onClick={() => setQuery(q => ({ ...q, offset: (q.offset ?? 0) + LIBRARY_PAGE_SIZE }))}>Next</button></div></footer>
+  </section>;
+}
+
+function MixerPanel({ channels, master }: { channels: Channel[]; master: number }) {
+  return <aside className="mixer-panel"><div className="section-heading"><div><p className="eyebrow">NOW PLAYING</p><h2>Live mixer <span className="count">{channels.length}</span></h2></div><button className="quiet small" disabled={!channels.length} onClick={() => mixer.clear()}>Stop all</button></div>
+    <div className="monitor"><label>Your listening volume <strong>{Math.round(master * 100)}%</strong><input aria-label="GM master volume" type="range" min="0" max="1" step="0.01" value={master} onChange={e => { const value = Number(e.target.value); mixer.setMaster(value); try { localStorage.setItem('gm-volume', String(value)); } catch { /* Optional preference. */ } }} /></label><p className="small muted">Only affects your speakers. Players have their own volume.</p></div>
+    <div className="channels">{channels.map(channel => <ChannelCard key={channel.id} channel={channel} />)}{!channels.length && <div className="empty compact"><span>≋</span><h3>Set the scene</h3><p>Play a track from the library.<br />Layer music, ambience, and SFX here.</p></div>}</div>
+  </aside>;
+}
+
 function App() {
   const [settings, setSettings] = useState<Settings>();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -153,31 +205,16 @@ function App() {
     const timer = setTimeout(() => { void api.query(query).then(value => { if (id === requestId.current) { setResult(value); setLoading(false); } }).catch(error => { if (id === requestId.current) { setError(describe(error)); setLoading(false); } }); }, 150);
     return () => clearTimeout(timer);
   }, [query, revision]);
-  const filter = (field: keyof LibraryQuery, value: unknown) => setQuery(current => ({ ...current, [field]: value, offset: 0 }));
   const scan = async () => { setScanning(true); setError(''); setProgress({ phase: 'scanning', count: 0, message: 'Discovering audio files…' }); try { await api.scan(); } catch (error) { setScanning(false); setError(describe(error)); } };
+  const report = (error: unknown) => setError(describe(error));
   return <>
     <header><div className="brand"><img className="brand-icon" src="./icon.png" alt="" width="56" height="56" /><div><h1>Antiphon</h1><p>Your tabletop soundscape</p></div></div><div className="header-actions"><span className={`status-pill ${server.broadcasting ? 'live' : ''}`}>{server.broadcasting ? `● Live · ${server.listeners} listener${server.listeners === 1 ? '' : 's'}` : '○ Broadcast offline'}</span><button disabled={!settings || scanning} onClick={() => setSettingsOpen(true)}>Settings</button></div></header>
     {error && <div className="banner error" role="alert">{error}<button className="quiet" onClick={() => setError('')}>Dismiss</button></div>}
-    <div className="workspace"><aside className="broadcast-panel" aria-label="Broadcast controls">
-      <section className="broadcast"><div className="section-heading"><h3>Player broadcast</h3><span className={`small ${server.broadcasting ? 'live-text' : 'muted'}`}>{server.listeners} listening</span></div><button className={mixer.playerBroadcast ? 'danger' : 'primary'} disabled={!server.running} onClick={() => { void (mixer.playerBroadcast ? mixer.stopBroadcast() : mixer.startBroadcast()).catch(error => setError(describe(error))); }}>{mixer.playerBroadcast ? 'Stop broadcast' : 'Start broadcast'}</button><p className="small muted" role="status">{server.error ?? broadcastState}</p>{server.urls.map(url => <div className="listen-url" key={url}><code>{url}</code><button className="quiet small" onClick={() => { void api.copyText(url).catch(error => setError(describe(error))); }}>Copy</button></div>)}<p className="small muted">Share the public address with remote players. Keep this app open during your session.</p></section>
-      <DiscordBroadcast status={discord} channels={discordChannels} refresh={refreshDiscord} report={error => setError(describe(error))} />
-    </aside><section className="library-panel">
-      <div className="section-heading"><div><p className="eyebrow">YOUR COLLECTION</p><h2>Audio library <span className="count">{facets.total.toLocaleString()}</span></h2></div><button disabled={scanning || !settings?.libraryRoot} onClick={() => void scan()}>{scanning ? 'Indexing…' : '↻ Re-index'}</button></div>
-      {progress && <div className={`scan-status ${progress.phase === 'error' ? 'error' : ''}`} role="status">{scanning && <progress />}<span>{progress.message}</span>{scanning && <strong>{progress.count.toLocaleString()} files</strong>}</div>}
-      <div className="filters"><input className="search" type="search" aria-label="Search tracks" placeholder="Search tracks, albums, and categories…" value={query.search ?? ''} onChange={e => filter('search', e.target.value)} />
-        <div className="filter-row"><select aria-label="Filter by type" value={query.type ?? ''} onChange={e => filter('type', e.target.value)}><option value="">All types</option>{AUDIO_TYPES.map(v => <option key={v}>{v}</option>)}</select><select aria-label="Filter by era" value={query.era ?? ''} onChange={e => filter('era', e.target.value)}><option value="">All eras</option>{facets.eras.map(v => <option key={v}>{v}</option>)}</select><select aria-label="Filter by genre" value={query.genre ?? ''} onChange={e => filter('genre', e.target.value)}><option value="">All genres</option>{facets.genres.map(v => <option key={v}>{v}</option>)}</select></div>
-        <div className="filter-options"><label className="check"><input type="checkbox" checked={!!query.reviewOnly} onChange={e => filter('reviewOnly', e.target.checked)} />Needs review ({facets.review})</label><label className="check"><input type="checkbox" checked={!!query.includeMissing} onChange={e => filter('includeMissing', e.target.checked)} />Include missing ({facets.missing})</label><button className="quiet small" onClick={() => setQuery({})}>Clear filters</button></div>
-      </div>
-      <div className="track-list" aria-busy={loading}>
-        {result.tracks.map(track => { const previewing = preview?.track.id === track.id && preview.playing; return <article className={`track ${track.missing ? 'missing' : ''}`} key={track.id}><button className="play-track" title={`Play ${track.title}`} aria-label={`Add ${track.title} to mixer`} disabled={track.missing} onClick={() => { void mixer.add(track).catch(error => setError(describe(error))); }}>▶</button><button className={`preview-track ${previewing ? 'playing' : ''}`} title={`${previewing ? 'Stop previewing' : 'Preview'} ${track.title}`} aria-label={`${previewing ? 'Stop previewing' : 'Preview'} ${track.title}`} disabled={track.missing} onClick={() => { void mixer.togglePreview(track).catch(error => setError(describe(error))); }}><PreviewIcon playing={previewing} /></button><div className="track-info"><h3 title={track.relativePath}>{track.title}</h3><p>{track.album} <span>· {track.era} · {track.genre}</span></p></div><span className={`type-tag ${track.type.toLowerCase()}`}>{track.type}</span><button className={`classify ${track.needsReview ? 'review' : 'quiet'}`} aria-label={`Classify ${track.title}`} title={track.reason} onClick={() => setEdit(track)}>{track.missing ? 'Missing' : track.needsReview ? 'Review' : 'Edit'}</button></article>; })}
-        {!result.tracks.length && <div className="empty"><span>♫</span><h3>{loading ? 'Loading your library…' : facets.total ? 'No matching tracks' : 'Build your sound library'}</h3><p>{facets.total ? 'Try another search or clear your filters.' : 'Choose your audio folder in Settings, then index it to get started.'}</p>{!facets.total && settings?.libraryRoot && <button className="primary" disabled={scanning} onClick={() => void scan()}>Index audio library</button>}{!settings?.libraryRoot && <button onClick={() => setSettingsOpen(true)}>Choose library folder</button>}</div>}
-      </div>
-      <footer className="pagination"><span>{result.total.toLocaleString()} matching tracks{result.total > 0 && ` · ${(query.offset ?? 0) + 1}–${Math.min((query.offset ?? 0) + LIBRARY_PAGE_SIZE, result.total)}`}</span><div><button disabled={!query.offset} onClick={() => setQuery(q => ({ ...q, offset: Math.max(0, (q.offset ?? 0) - LIBRARY_PAGE_SIZE) }))}>Previous</button><button disabled={(query.offset ?? 0) + LIBRARY_PAGE_SIZE >= result.total} onClick={() => setQuery(q => ({ ...q, offset: (q.offset ?? 0) + LIBRARY_PAGE_SIZE }))}>Next</button></div></footer>
-    </section>
-    <aside className="mixer-panel"><div className="section-heading"><div><p className="eyebrow">NOW PLAYING</p><h2>Live mixer <span className="count">{channels.length}</span></h2></div><button className="quiet small" disabled={!channels.length} onClick={() => mixer.clear()}>Stop all</button></div>
-      <div className="monitor"><label>Your listening volume <strong>{Math.round(master * 100)}%</strong><input aria-label="GM master volume" type="range" min="0" max="1" step="0.01" value={master} onChange={e => { const value = Number(e.target.value); mixer.setMaster(value); try { localStorage.setItem('gm-volume', String(value)); } catch { /* Optional preference. */ } }} /></label><p className="small muted">Only affects your speakers. Players have their own volume.</p></div>
-      <div className="channels">{channels.map(channel => <ChannelCard key={channel.id} channel={channel} />)}{!channels.length && <div className="empty compact"><span>≋</span><h3>Set the scene</h3><p>Play a track from the library.<br />Layer music, ambience, and SFX here.</p></div>}</div>
-    </aside></div>
+    <div className="workspace">
+      <BroadcastPanel server={server} discord={discord} channels={discordChannels} broadcastState={broadcastState} refreshDiscord={refreshDiscord} report={report} />
+      <LibraryPanel settings={settings} facets={facets} result={result} query={query} setQuery={setQuery} progress={progress} scanning={scanning} loading={loading} preview={preview} scan={scan} edit={setEdit} openSettings={() => setSettingsOpen(true)} report={report} />
+      <MixerPanel channels={channels} master={master} />
+    </div>
     {edit && <ClassificationEditor track={edit} facets={facets} close={() => setEdit(undefined)} saved={() => { setEdit(undefined); void refresh().catch(error => setError(describe(error))); }} />}
     {settingsOpen && settings && <SettingsEditor initial={settings} discord={discord} close={() => setSettingsOpen(false)} saved={async () => { setSettingsOpen(false); setQuery({}); const status = await refresh(); await refreshDiscord(status); }} />}
   </>;

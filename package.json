@@ -1,7 +1,7 @@
 {
   "name": "antiphon",
   "desktopName": "antiphon.desktop",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "A local tabletop audio library, mixer, and live broadcast",
   "author": "Chaotic Wizard <contact@chaoticwizard.com> (https://chaoticwizard.com/)",
   "homepage": "https://chaoticwizard.com/",

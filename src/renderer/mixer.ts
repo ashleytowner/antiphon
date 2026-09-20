@@ -33,7 +33,7 @@ export class Mixer {
   private peer?: RTCPeerConnection;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private generation = 0;
-  private connecting = false;
+  private connectionAttempt?: Promise<void>;
   master = 0.8;
   wantsBroadcast = false;
   playerBroadcast = false;
@@ -142,18 +142,45 @@ export class Mixer {
   async startBroadcast() {
     this.playerBroadcast = true;
     this.wantsBroadcast = true;
-    await this.api.enablePlayerListeners();
-    await this.ensureBroadcast();
+    this.emit();
+    try {
+      await this.api.enablePlayerListeners();
+      await this.ensureBroadcast();
+    } catch (error) {
+      this.playerBroadcast = false;
+      this.wantsBroadcast = this.discordBroadcast;
+      this.emit();
+      throw error;
+    }
   }
   async startDiscord() {
     this.discordBroadcast = true;
     this.wantsBroadcast = true;
-    if (!this.playerBroadcast) await this.api.disablePlayerListeners();
-    await this.ensureBroadcast();
+    this.emit();
+    try {
+      if (!this.playerBroadcast) await this.api.disablePlayerListeners();
+      await this.ensureBroadcast();
+    } catch (error) {
+      this.discordBroadcast = false;
+      this.wantsBroadcast = this.playerBroadcast;
+      this.emit();
+      throw error;
+    }
   }
   private async ensureBroadcast() {
-    if (this.connecting) return;
-    this.connecting = true;
+    if (this.connectionAttempt) {
+      await this.connectionAttempt;
+      // A stop followed immediately by a start invalidates the old attempt.
+      // Start the newly requested generation once that attempt has unwound.
+      if (this.wantsBroadcast && !this.peer) await this.ensureBroadcast();
+      return;
+    }
+    const attempt = this.connectBroadcast();
+    this.connectionAttempt = attempt;
+    try { await attempt; }
+    finally { if (this.connectionAttempt === attempt) this.connectionAttempt = undefined; }
+  }
+  private async connectBroadcast() {
     const generation = ++this.generation;
     try {
       await this.ready();
@@ -184,7 +211,7 @@ export class Mixer {
     } catch (error) {
       if (generation !== this.generation) return;
       this.broadcastState = `Connection error: ${String(error)}`; this.emit(); this.scheduleReconnect();
-    } finally { this.connecting = false; }
+    }
   }
   private scheduleReconnect() {
     if (!this.wantsBroadcast || this.reconnectTimer) return;

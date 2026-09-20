@@ -15,7 +15,17 @@ export function validateSettings(value: Settings): Settings {
   if (value.libraryRoot && !path.isAbsolute(value.libraryRoot)) throw new Error('Choose an absolute library folder.');
   if (value.stunUrl && !/^stun:[^\s]+$/.test(value.stunUrl)) throw new Error('STUN URL must start with stun:.');
   if (value.turnUrl && !/^turns?:[^\s]+$/.test(value.turnUrl)) throw new Error('TURN URL must start with turn: or turns:.');
-  return Object.fromEntries(Object.keys(defaults).map(key => [key, value[key as keyof Settings]])) as unknown as Settings;
+  return {
+    libraryRoot: value.libraryRoot,
+    port: value.port,
+    udpMin: value.udpMin,
+    udpMax: value.udpMax,
+    publicAddress: value.publicAddress,
+    stunUrl: value.stunUrl,
+    turnUrl: value.turnUrl,
+    turnUsername: value.turnUsername,
+    turnCredential: value.turnCredential,
+  };
 }
 export async function loadSettings(filename: string): Promise<Settings> {
   try { return validateSettings({ ...defaults, ...JSON.parse(await readFile(filename, 'utf8')) }); }

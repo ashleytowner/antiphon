@@ -6,6 +6,23 @@ import { AUDIO_TYPES, LIBRARY_PAGE_SIZE } from '../shared/constants';
 import type { Classification, Facets, LibraryQuery, LibraryResult, ScanProgress, Track } from '../shared/types';
 
 const extensions = new Set(['.ogg', '.oga', '.opus', '.mp3', '.wav', '.flac', '.m4a', '.aac', '.webm', '.mp4', '.aif', '.aiff']);
+function rowToTrack(row: Record<string, unknown>): Track {
+  const type = String(row.type);
+  if (!AUDIO_TYPES.some(value => value === type)) throw new Error(`Invalid audio type in library database: ${type}`);
+  return {
+    id: Number(row.id),
+    relativePath: String(row.relativePath),
+    title: String(row.title),
+    album: String(row.album),
+    type: type as Track['type'],
+    era: String(row.era),
+    genre: String(row.genre),
+    needsReview: Boolean(row.needsReview),
+    reason: String(row.reason),
+    missing: Boolean(row.missing),
+    manual: Boolean(row.manual),
+  };
+}
 export class Library {
   readonly db: DatabaseSync;
   constructor(filename: string) {
@@ -34,7 +51,7 @@ export class Library {
     const total = Number(this.db.prepare(`SELECT count(*) AS n FROM tracks WHERE ${condition}`).get(...args)!.n);
     const offset = Math.max(0, Math.floor(Number(query.offset) || 0));
     const rows = this.db.prepare(`SELECT * FROM tracks WHERE ${condition} ORDER BY title COLLATE NOCASE, relativePath LIMIT ${LIBRARY_PAGE_SIZE} OFFSET ?`).all(...args, offset);
-    return { tracks: rows.map(row => ({ ...row, needsReview: !!row.needsReview, missing: !!row.missing, manual: !!row.manual }) as unknown as Track), total };
+    return { tracks: rows.map(rowToTrack), total };
   }
   facets(root: string): Facets {
     const values = (field: string) => this.db.prepare(`SELECT DISTINCT ${field} AS value FROM tracks WHERE root = ? AND missing = 0 ORDER BY ${field} COLLATE NOCASE`).all(root).map(r => String(r.value));

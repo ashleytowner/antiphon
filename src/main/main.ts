@@ -21,6 +21,8 @@ let broadcasting = false;
 let blocker: number | undefined;
 
 app.whenReady().then(async () => {
+  const icon = path.join(__dirname, '../renderer/icon.png');
+  if (process.platform === 'darwin') app.dock?.setIcon(icon);
   const settingsFile = path.join(app.getPath('userData'), 'settings.json');
   try { settings = await loadSettings(settingsFile); }
   catch (error) { dialog.showErrorBox('Unable to load settings', String(error)); settings = { ...defaults }; }
@@ -43,7 +45,7 @@ app.whenReady().then(async () => {
   });
   const window = new BrowserWindow({
     width: 1400, height: 950, minWidth: 1000, minHeight: 650,
-    backgroundColor: '#ffffff', title: 'Antiphon',
+    backgroundColor: '#ffffff', title: 'Antiphon', icon,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false }
   });
   window.setMenuBarVisibility(false);

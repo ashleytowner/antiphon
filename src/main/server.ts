@@ -28,7 +28,7 @@ export class PlayerServer {
     this.server.headersTimeout = 10_000;
   }
   async start() {
-    for (const [route, file, type] of [['/', 'index.html', 'text/html'], ['/player.js', 'player.js', 'text/javascript'], ['/player.css', 'player.css', 'text/css']]) {
+    for (const [route, file, type] of [['/', 'index.html', 'text/html'], ['/player.js', 'player.js', 'text/javascript'], ['/player.css', 'player.css', 'text/css'], ['/icon.png', 'icon.png', 'image/png']]) {
       this.assets.set(route, { body: await readFile(path.join(this.assetDirectory, file)), type });
     }
     await new Promise<void>((resolve, reject) => {

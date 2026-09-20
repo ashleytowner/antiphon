@@ -47,5 +47,5 @@ input[type=range]::-moz-range-track { height: 4px; background: var(--music); bor
 input[type=range]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; margin-top: -7px; background: var(--paper); border: var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
 input[type=range]::-moz-range-thumb { width: 14px; height: 14px; background: var(--paper); border: var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
 input[type=checkbox] { width: 16px; height: 16px; }
-.brand-icon { display: inline-grid; place-items: center; font-size: 30px; line-height: 1; background: var(--music); border: var(--border); box-shadow: var(--shadow-sm); padding: 10px 14px; border-radius: var(--radius-md); }
+.brand-icon { display: block; width: 56px; height: 56px; object-fit: contain; flex-shrink: 0; background: var(--music); border: var(--border); box-shadow: var(--shadow-sm); padding: 5px; border-radius: var(--radius-md); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }

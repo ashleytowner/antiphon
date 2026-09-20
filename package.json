@@ -1,5 +1,6 @@
 {
   "name": "antiphon",
+  "desktopName": "antiphon.desktop",
   "version": "0.1.0",
   "description": "A local tabletop audio library, mixer, and live broadcast",
   "author": "Chaotic Wizard <contact@chaoticwizard.com> (https://chaoticwizard.com/)",
@@ -8,6 +9,7 @@
   "private": true,
   "main": "dist/main/main.js",
   "scripts": {
+    "icons": "node scripts/icons.mjs",
     "build": "tsc --noEmit && node scripts/build.mjs",
     "start": "npm run build && electron .",
     "test": "tsx --test tests/*.test.ts",
@@ -42,6 +44,8 @@
       "package.json"
     ],
     "linux": {
+      "syncDesktopName": true,
+      "icon": "resources/icon.png",
       "target": [
         "AppImage",
         "deb"
@@ -49,9 +53,11 @@
       "category": "AudioVideo"
     },
     "win": {
+      "icon": "resources/icon.ico",
       "target": "nsis"
     },
     "mac": {
+      "icon": "resources/icon.icns",
       "target": "dmg",
       "category": "public.app-category.music"
     }

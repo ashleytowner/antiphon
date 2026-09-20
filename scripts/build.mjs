@@ -3,6 +3,7 @@ import { mkdir, copyFile } from 'node:fs/promises';
 await mkdir('dist/renderer', { recursive: true });
 await mkdir('dist/player', { recursive: true });
 await mkdir('dist/licenses', { recursive: true });
+for (const target of ['renderer', 'player']) await copyFile('resources/icon.png', `dist/${target}/icon.png`);
 for (const license of ['Epilogue-OFL.txt', 'IBM-Plex-Mono-OFL.txt']) await copyFile(`src/shared/fonts/${license}`, `dist/licenses/${license}`);
 await build({ entryPoints: ['src/main/main.ts', 'src/main/preload.ts', 'src/main/scan-worker.ts'], outdir: 'dist/main', bundle: true, platform: 'node', format: 'cjs', external: ['electron'], sourcemap: true });
 await build({ entryPoints: ['src/renderer/app.tsx'], outdir: 'dist/renderer', bundle: true, platform: 'browser', loader: { '.woff2': 'dataurl' }, sourcemap: true, define: { 'process.env.NODE_ENV': '"production"' } });

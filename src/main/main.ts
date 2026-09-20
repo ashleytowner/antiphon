@@ -47,8 +47,8 @@ app.whenReady().then(async () => {
   }
   const database = path.join(app.getPath('userData'), 'library.sqlite');
   library = new Library(database);
-  const startServer = async (): Promise<PlayerServer | undefined> => {
-    const next = new PlayerServer(settings, path.join(__dirname, '../player'));
+  const startServer = async (configuration = settings): Promise<PlayerServer | undefined> => {
+    const next = new PlayerServer(configuration, path.join(__dirname, '../player'));
     try { await next.start(); server = next; serverError = undefined; }
     catch (error) { await next.close(); server = undefined; serverError = String((error as Error).message); }
     return server;
@@ -79,14 +79,30 @@ app.whenReady().then(async () => {
     saving = true;
     try {
       const next = validateSettings(value);
-      await storeSettings(settingsFile, next);
-      settings = next;
+      const previous = settings;
       await stopBroadcast();
       await discord?.close(); discord = undefined;
       await server?.close(); server = undefined;
-      const restartedServer = await startServer();
-      if (restartedServer) { discord = new DiscordBroadcaster(restartedServer.relay); await discord.configure(discordToken ?? null); }
-      if (serverError) throw new Error(`Settings saved, but the server could not start: ${serverError}`);
+      let attemptedServer: PlayerServer | undefined;
+      try {
+        attemptedServer = await startServer(next);
+        if (!attemptedServer) throw new Error(`The server could not start with these settings: ${serverError}`);
+        discord = new DiscordBroadcaster(attemptedServer.relay);
+        await discord.configure(discordToken ?? null);
+        await storeSettings(settingsFile, next);
+        settings = next;
+      } catch (error) {
+        const failure = error instanceof Error ? error.message : String(error);
+        await discord?.close(); discord = undefined;
+        await attemptedServer?.close(); server = undefined;
+        const restoredServer = await startServer(previous);
+        if (restoredServer) {
+          discord = new DiscordBroadcaster(restoredServer.relay);
+          await discord.configure(discordToken ?? null);
+        }
+        const recovery = restoredServer ? 'The previous settings were restored.' : `The previous server also could not restart: ${serverError}`;
+        throw new Error(`${failure} ${recovery}`);
+      }
     } finally { saving = false; }
   });
   handle('library:choose', async () => {

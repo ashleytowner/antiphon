@@ -24,6 +24,14 @@ let blocker: number | undefined;
 let discord: DiscordBroadcaster | undefined;
 let discordToken: string | undefined;
 
+async function stopBroadcast() {
+  await server?.relay.stopPublisher();
+  if (blocker !== undefined) {
+    powerSaveBlocker.stop(blocker);
+    blocker = undefined;
+  }
+}
+
 app.whenReady().then(async () => {
   const icon = path.join(__dirname, '../renderer/icon.png');
   if (process.platform === 'darwin') app.dock?.setIcon(icon);
@@ -73,9 +81,9 @@ app.whenReady().then(async () => {
       const next = validateSettings(value);
       await storeSettings(settingsFile, next);
       settings = next;
+      await stopBroadcast();
       await discord?.close(); discord = undefined;
       await server?.close(); server = undefined;
-      if (blocker !== undefined) { powerSaveBlocker.stop(blocker); blocker = undefined; }
       const restartedServer = await startServer();
       if (restartedServer) { discord = new DiscordBroadcaster(restartedServer.relay); await discord.configure(discordToken ?? null); }
       if (serverError) throw new Error(`Settings saved, but the server could not start: ${serverError}`);
@@ -128,17 +136,18 @@ app.whenReady().then(async () => {
     } finally { broadcasting = false; }
   });
   handle('broadcast:stop', async () => {
-    await server?.relay.stopPublisher();
-    if (blocker !== undefined) { powerSaveBlocker.stop(blocker); blocker = undefined; }
+    await stopBroadcast();
   });
   handle('broadcast:enable-listeners', () => { server?.relay.enableListeners(); });
   handle('broadcast:disable-listeners', () => server?.relay.disableListeners());
-  window.webContents.on('render-process-gone', () => { void server?.relay.stopPublisher(); });
+  window.webContents.on('render-process-gone', () => { void stopBroadcast(); });
   await window.loadFile(path.join(__dirname, '../renderer/index.html'));
 }).catch(error => { dialog.showErrorBox('Unable to start Antiphon', String(error)); app.quit(); });
 app.on('before-quit', event => {
   if (quitting) return;
   event.preventDefault(); quitting = true;
-  void Promise.all([worker?.terminate(), discord?.close(), server?.close()]).finally(() => { library?.close(); app.quit(); });
+  void Promise.allSettled([worker?.terminate(), discord?.close(), stopBroadcast()])
+    .then(() => server?.close())
+    .finally(() => { library?.close(); app.quit(); });
 });
 app.on('window-all-closed', () => app.quit());

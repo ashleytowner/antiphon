@@ -20,7 +20,7 @@ let retry: ReturnType<typeof setTimeout> | undefined;
 let heartbeat: ReturnType<typeof setInterval> | undefined;
 let generation = 0;
 try {
-  volume.value = localStorage.getItem("volume") ?? "0.8";
+  volume.value = localStorage.getItem("volume") ?? "1.0";
 } catch {
   /* Storage may be disabled. */
 }

@@ -45,7 +45,7 @@ export class Mixer {
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private generation = 0;
   private connectionAttempt?: Promise<void>;
-  master = 0.8;
+  master = 1.0;
   wantsBroadcast = false;
   playerBroadcast = false;
   private discordBroadcast = false;
@@ -142,14 +142,14 @@ export class Mixer {
   }
   async add(track: Track) {
     await this.ready();
-    const { audio, source, gain } = this.createMedia(track, 0.7, this.bus!);
+    const { audio, source, gain } = this.createMedia(track, 1.0, this.bus!);
     const channel: Channel = {
       id: crypto.randomUUID(),
       track,
       audio,
       source,
       gain,
-      volume: 0.7,
+      volume: 1.0,
       loop: track.type !== "SFX",
       playing: false,
     };

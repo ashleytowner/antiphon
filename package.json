@@ -15,9 +15,10 @@
     "test": "tsx --test tests/*.test.ts",
     "package": "npm run build && electron-builder --publish never",
     "package:win": "npm run build && electron-builder --win nsis --x64 --publish never",
-    "prepare:mac": "node scripts/install-macos-davey.mjs",
     "verify:mac": "node scripts/verify-macos-davey.mjs",
-    "package:mac": "npm run build && npm run prepare:mac && electron-builder --mac dmg --universal --publish never && npm run verify:mac",
+    "package:mac": "npm run build && electron-builder --mac dmg --publish never && npm run verify:mac",
+    "package:mac:x64": "npm run build && electron-builder --mac dmg --x64 --publish never && npm run verify:mac -- x64",
+    "package:mac:arm64": "npm run build && electron-builder --mac dmg --arm64 --publish never && npm run verify:mac -- arm64",
     "package:linux": "npm run build && electron-builder --linux --publish never",
     "check": "npm run build && npm test",
     "test:desktop": "npm run build && playwright test"
@@ -68,8 +69,7 @@
     "mac": {
       "icon": "resources/icon.icns",
       "target": "dmg",
-      "category": "public.app-category.music",
-      "x64ArchFiles": "**/node_modules/@snazzah/davey-darwin-*/**/*.node"
+      "category": "public.app-category.music"
     },
     "asarUnpack": [
       "node_modules/@snazzah/davey-darwin-arm64/**/*.node",

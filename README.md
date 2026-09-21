@@ -4,7 +4,7 @@
 
 Antiphon is a desktop app which lets game masters play their own audio tracks and stream it to their players. Be it music, ambience, or special effects, you can play it all from your PC, all locally, without handing off any data to a third party, and without any subscriptions.
 
-![Antiphon desktop app: audio library, player broadcast controls, and live mixer](docs/images/desktop.png)
+<div align="center"><img alt="Antiphon Logo: A blue wizard's hat with a musical note" src="resources/icon.png" width=150 height=150 /></div>
 
 - **BYO Audio.** Antiphon doesn't come with any audio pre-installed, it's designed for you to bring your own from places like [Michael Ghelfi Stuios](https://michaelghelfistudios.com/) or [Tabletop Audio](https://tabletopaudio.com/).
 - **Mix your scene live.** Play several tracks at once, set each track's volume, loop background audio, and use one-shot sound effects when the moment calls for them.
